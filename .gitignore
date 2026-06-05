@@ -2,19 +2,34 @@
 .vs/
 bin/
 obj/
+*.user
+*.suo
 
 # Flutter
 .dart_tool/
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 
 # Android
 android/.gradle/
 android/app/build/
+android/local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
 
 # VS Code
 .vscode/
 
 # Logs
 *.log
+
+# Environment
+.env
+.env.*
+
+# Generated files
+coverage/
