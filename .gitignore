@@ -33,3 +33,9 @@ ios/.symlinks/
 
 # Generated files
 coverage/
+
+# JetBrains
+.idea/
+*.iml
+*.ipr
+*.iws
