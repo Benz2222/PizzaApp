@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android
+android/.gradle/
+android/app/build/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log

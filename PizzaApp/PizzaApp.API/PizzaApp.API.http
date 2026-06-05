@@ -1,0 +1,6 @@
+@PizzaApp.API_HostAddress = http://localhost:5201
+
+GET {{PizzaApp.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
