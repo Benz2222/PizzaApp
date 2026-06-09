@@ -11,5 +11,5 @@ namespace PizzaApp.Core.Interfaces;
 public interface IProductService
 {
     Task<List<ProductDto>> GetAllAsync();
-    Task<ProductDto?> GetByIdAsync(int id);
+    Task<ProductDto?> GetByIdAsync(string id);
 }

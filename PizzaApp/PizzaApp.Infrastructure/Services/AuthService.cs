@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using PizzaApp.Core.DTOs.Auth;
 using PizzaApp.Core.Entities;
 using PizzaApp.Core.Interfaces;
@@ -13,19 +13,18 @@ namespace PizzaApp.Infrastructure.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly AppDbContext _db;
+    private readonly IMongoCollection<User> _users;
     private readonly IConfiguration _config;
 
-    public AuthService(AppDbContext db, IConfiguration config)
+    public AuthService(MongoDbService mongoDb, IConfiguration config)
     {
-        _db = db;
+        _users = mongoDb.GetCollection<User>("Users");
         _config = config;
     }
 
     public async Task<string?> RegisterAsync(RegisterDto dto)
     {
-        // Kiểm tra email đã tồn tại chưa
-        var exists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+        var exists = await _users.Find(u => u.Email == dto.Email).AnyAsync();
         if (exists) return null;
 
         var user = new User
@@ -36,15 +35,14 @@ public class AuthService : IAuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        await _users.InsertOneAsync(user);
 
         return GenerateToken(user);
     }
 
     public async Task<string?> LoginAsync(LoginDto dto)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        var user = await _users.Find(u => u.Email == dto.Email).FirstOrDefaultAsync();
         if (user == null) return null;
 
         var isValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
@@ -53,32 +51,25 @@ public class AuthService : IAuthService
         return GenerateToken(user);
     }
 
-    // ---- private helper ----
     private string GenerateToken(User user)
     {
         var jwtSettings = _config.GetSection("JwtSettings");
         var secretKeyValue = jwtSettings["SecretKey"]!;
-
-        Console.WriteLine("KEY: " + secretKeyValue);  // ← thêm tạm để debug
-        Console.WriteLine("ISSUER: " + jwtSettings["Issuer"]);
-
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKeyValue));
 
         var claims = new[]
         {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Email, user.Email),
-        new Claim(ClaimTypes.Name, user.FullName)
-    };
+            new Claim(ClaimTypes.NameIdentifier, user.Id), // Id giờ đã là string
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.FullName)
+        };
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(
-                int.Parse(jwtSettings["ExpiresInDays"]!)),  // ← đọc string "7"
-            signingCredentials: new SigningCredentials(
-                key, SecurityAlgorithms.HmacSha256)
+            expires: DateTime.UtcNow.AddDays(int.Parse(jwtSettings["ExpiresInDays"] ?? "7")),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
