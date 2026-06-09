@@ -10,6 +10,13 @@ namespace PizzaApp.Core.Interfaces;
 
 public interface IOrderService
 {
-    Task<int> CreateOrderAsync(int userId, CreateOrderDto dto);
-    Task<List<OrderResultDto>> GetMyOrdersAsync(int userId);
+    Task<string> CreateOrderAsync(string userId, CreateOrderDto dto);
+    Task<bool> ConfirmPaymentAsync(string orderId);
+    Task<List<OrderResultDto>> GetMyOrdersAsync(string userId);
+    Task<OrderResultDto?> GetOrderDetailAsync(string orderId, string userId);
+    Task<bool> CancelOrderAsync(string orderId, string userId);
+    // Admin & Shipper methods
+    Task<List<OrderResultDto>> GetAllOrdersAsync();
+    Task<List<OrderResultDto>> GetOrdersByStatusAsync(string status);
+    Task<bool> UpdateOrderStatusAsync(string orderId, string status);
 }

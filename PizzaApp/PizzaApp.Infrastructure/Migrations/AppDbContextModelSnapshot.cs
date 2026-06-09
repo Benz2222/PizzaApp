@@ -24,11 +24,8 @@ namespace PizzaApp.Infrastructure.Migrations
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -44,29 +41,24 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.OrderItem", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -78,22 +70,13 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("ProductId");
-
                     b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Product", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -124,7 +107,7 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = "1",
                             Category = "Truyền thống",
                             Description = "Phô mai, cà chua, húng quế",
                             ImageUrl = "margherita.jpg",
@@ -134,7 +117,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 2,
+                            Id = "2",
                             Category = "Hải sản",
                             Description = "Tôm, mực, sốt tỏi bơ",
                             ImageUrl = "seafood.jpg",
@@ -144,7 +127,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 3,
+                            Id = "3",
                             Category = "Đặc biệt",
                             Description = "Thịt bò, hành tây, sốt BBQ",
                             ImageUrl = "bbq.jpg",
@@ -154,7 +137,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 4,
+                            Id = "4",
                             Category = "Chay",
                             Description = "Rau củ, nấm, phô mai",
                             ImageUrl = "veggie.jpg",
@@ -166,11 +149,8 @@ namespace PizzaApp.Infrastructure.Migrations
 
             modelBuilder.Entity("PizzaApp.Core.Entities.User", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -198,39 +178,6 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
-                {
-                    b.HasOne("PizzaApp.Core.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.OrderItem", b =>
-                {
-                    b.HasOne("PizzaApp.Core.Entities.Order", null)
-                        .WithMany("OrderItems")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PizzaApp.Core.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
-                {
-                    b.Navigation("OrderItems");
                 });
 #pragma warning restore 612, 618
         }
