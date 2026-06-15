@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 
 using PizzaApp.Core.Interfaces;
+using PizzaApp.Core.DTOs.Product;
 
 namespace PizzaApp.API.Controllers;
 
@@ -26,4 +27,38 @@ public class ProductsController : ControllerBase
         if (product == null) return NotFound();
         return Ok(product);
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Create(CreateProductDTO dto)
+    {
+        var product = await _productService.CreateAsync(dto);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = product.Id },
+            product);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, UpdateProductDTO dto)
+    {
+        var result = await _productService.UpdateAsync(id, dto);
+
+        if (!result)
+            return NotFound();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _productService.DeleteAsync(id);
+
+        if (!result)
+            return NotFound();
+
+        return NoContent();
+    }
+
 }
