@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PizzaApp.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PizzaApp.Infrastructure.Data;
 namespace PizzaApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615155643_AddCategoryTable")]
+    partial class AddCategoryTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -41,8 +44,11 @@ namespace PizzaApp.Infrastructure.Migrations
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -58,24 +64,29 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.OrderItem", b =>
                 {
-                    b.Property<string>("ProductId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("ProductName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -87,13 +98,22 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
 
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId");
+
                     b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Product", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
@@ -125,8 +145,11 @@ namespace PizzaApp.Infrastructure.Migrations
 
             modelBuilder.Entity("PizzaApp.Core.Entities.User", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Address")
                         .IsRequired()
