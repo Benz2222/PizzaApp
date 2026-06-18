@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MongoDB.Driver;
 using PizzaApp.Core.DTOs.Product;
 using PizzaApp.Core.Entities;
 using PizzaApp.Core.Interfaces;
@@ -8,9 +8,12 @@ namespace PizzaApp.Infrastructure.Services;
 
 public class ProductService : IProductService
 {
-    private readonly AppDbContext _db;
+    private readonly IMongoCollection<Product> _products;
 
-    public ProductService(AppDbContext db) => _db = db;
+    public ProductService(MongoDbService mongoDb)
+    {
+        _products = mongoDb.GetCollection<Product>("Products");
+    }
 
     public async Task<List<ProductDto>> GetAllAsync()
     {
@@ -30,7 +33,7 @@ public class ProductService : IProductService
             .ToListAsync();
     }
 
-    public async Task<ProductDto?> GetByIdAsync(int id)
+    public async Task<ProductDto?> GetByIdAsync(string id)
     {
         var p = await _db.Products.Include(p => p.Category)
         .FirstOrDefaultAsync(p => p.Id == id);
