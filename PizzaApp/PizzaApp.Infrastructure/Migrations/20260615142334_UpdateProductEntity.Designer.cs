@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PizzaApp.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PizzaApp.Infrastructure.Data;
 namespace PizzaApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615142334_UpdateProductEntity")]
+    partial class UpdateProductEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,23 +24,6 @@ namespace PizzaApp.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.Category", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Categories");
-                });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
                 {
@@ -112,8 +98,9 @@ namespace PizzaApp.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int");
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -135,9 +122,49 @@ namespace PizzaApp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoryId");
-
                     b.ToTable("Products");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Category = "Truyền thống",
+                            Description = "Phô mai, cà chua, húng quế",
+                            ImageUrl = "margherita.jpg",
+                            IsAvailable = true,
+                            Name = "Margherita",
+                            Price = 89000m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Category = "Hải sản",
+                            Description = "Tôm, mực, sốt tỏi bơ",
+                            ImageUrl = "seafood.jpg",
+                            IsAvailable = true,
+                            Name = "Hải Sản",
+                            Price = 129000m
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Category = "Đặc biệt",
+                            Description = "Thịt bò, hành tây, sốt BBQ",
+                            ImageUrl = "bbq.jpg",
+                            IsAvailable = true,
+                            Name = "BBQ Bò",
+                            Price = 119000m
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Category = "Chay",
+                            Description = "Rau củ, nấm, phô mai",
+                            ImageUrl = "veggie.jpg",
+                            IsAvailable = true,
+                            Name = "Veggie",
+                            Price = 79000m
+                        });
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.User", b =>
@@ -202,22 +229,6 @@ namespace PizzaApp.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.Product", b =>
-                {
-                    b.HasOne("PizzaApp.Core.Entities.Category", "Category")
-                        .WithMany("Products")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Category");
-                });
-
-            modelBuilder.Entity("PizzaApp.Core.Entities.Category", b =>
-                {
-                    b.Navigation("Products");
                 });
 
             modelBuilder.Entity("PizzaApp.Core.Entities.Order", b =>
