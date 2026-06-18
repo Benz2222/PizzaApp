@@ -127,7 +127,7 @@ namespace PizzaApp.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = "1",
                             Category = "Truyền thống",
                             Description = "Phô mai, cà chua, húng quế",
                             ImageUrl = "margherita.jpg",
@@ -137,7 +137,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 2,
+                            Id = "2",
                             Category = "Hải sản",
                             Description = "Tôm, mực, sốt tỏi bơ",
                             ImageUrl = "seafood.jpg",
@@ -147,7 +147,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 3,
+                            Id = "3",
                             Category = "Đặc biệt",
                             Description = "Thịt bò, hành tây, sốt BBQ",
                             ImageUrl = "bbq.jpg",
@@ -157,7 +157,7 @@ namespace PizzaApp.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = 4,
+                            Id = "4",
                             Category = "Chay",
                             Description = "Rau củ, nấm, phô mai",
                             ImageUrl = "veggie.jpg",

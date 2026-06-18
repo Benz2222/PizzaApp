@@ -1,71 +1,185 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MongoDB.Driver;
 using PizzaApp.Core.DTOs.Order;
 using PizzaApp.Core.Entities;
 using PizzaApp.Core.Interfaces;
 using PizzaApp.Infrastructure.Data;
+using Net.payOS;
+using Net.payOS.Types;
 
 namespace PizzaApp.Infrastructure.Services;
 
 public class OrderService : IOrderService
 {
-    private readonly AppDbContext _db;
+    private readonly IMongoCollection<Order> _orders;
+    private readonly IMongoCollection<Product> _products;
+    private readonly IMongoCollection<Payment> _payments;
+    private readonly PayOS _payOS;
 
-    public OrderService(AppDbContext db) => _db = db;
-
-    public async Task<int> CreateOrderAsync(int userId, CreateOrderDto dto)
+    public OrderService(MongoDbService mongoDb, PayOS payOS)
     {
+        _orders = mongoDb.GetCollection<Order>("Orders");
+        _products = mongoDb.GetCollection<Product>("Products");
+        _payments = mongoDb.GetCollection<Payment>("Payments");
+        _payOS = payOS;
+    }
+
+    public async Task<string> CreateOrderAsync(string userId, CreateOrderDto dto)
+    {
+        if (dto.Items == null || !dto.Items.Any())
+            throw new System.Exception("Giỏ hàng không có sản phẩm nào.");
+
         var order = new Order
         {
             UserId = userId,
             DeliveryAddress = dto.DeliveryAddress,
-            Status = "Pending"
+            Status = "AwaitingPayment",
+            PaymentStatus = "Unpaid",
+            PaymentMethod = "PayOS",
+            CreatedAt = System.DateTime.UtcNow
         };
 
         decimal total = 0;
+        var payOSItems = new System.Collections.Generic.List<ItemData>();
 
         foreach (var item in dto.Items)
         {
-            var product = await _db.Products.FindAsync(item.ProductId);
+            var product = await _products.Find(p => p.Id == item.ProductId).FirstOrDefaultAsync();
             if (product == null) continue;
 
             order.OrderItems.Add(new OrderItem
             {
                 ProductId = item.ProductId,
+                ProductName = product.Name,
                 Quantity = item.Quantity,
                 UnitPrice = product.Price,
                 Size = item.Size
             });
-
             total += product.Price * item.Quantity;
+
+            payOSItems.Add(new ItemData(product.Name, item.Quantity, (int)product.Price));
         }
 
         order.TotalPrice = total;
+        await _orders.InsertOneAsync(order);
 
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync();
+        try
+        {
+            long orderCode = long.Parse(System.DateTime.Now.ToString("yyyyMMddHHmmss"));
+
+            var paymentData = new PaymentData(
+                orderCode: orderCode,
+                amount: (int)total,
+                description: "Thanh toan Pizza",
+                items: payOSItems,
+                returnUrl: "https://localhost:7211/api/Orders/my",
+                cancelUrl: "https://localhost:7211/api/Cart"
+            );
+
+            CreatePaymentResult paymentLink = await _payOS.createPaymentLink(paymentData);
+
+            var payment = new Payment
+            {
+                OrderId = order.Id,
+                PayOSOrderCode = orderCode,
+                Amount = total,
+                Status = "PENDING",
+                CheckoutUrl = paymentLink.checkoutUrl
+            };
+            await _payments.InsertOneAsync(payment);
+        }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine("Lỗi PayOS: " + ex.Message);
+        }
 
         return order.Id;
     }
 
-    public async Task<List<OrderResultDto>> GetMyOrdersAsync(int userId)
+    public async Task<bool> ConfirmPaymentAsync(string orderId)
     {
-        return await _db.Orders
-            .Where(o => o.UserId == userId)
-            .Include(o => o.OrderItems)
-            .OrderByDescending(o => o.CreatedAt)
-            .Select(o => new OrderResultDto
+        await _payments.UpdateOneAsync(
+            p => p.OrderId == orderId,
+            Builders<Payment>.Update.Set(p => p.Status, "PAID")
+        );
+
+        var result = await _orders.UpdateOneAsync(
+            o => o.Id == orderId && o.PaymentStatus == "Unpaid",
+            Builders<Order>.Update
+                .Set(o => o.PaymentStatus, "Paid")
+                .Set(o => o.Status, "Preparing")
+        );
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<List<OrderResultDto>> GetMyOrdersAsync(string userId)
+    {
+        var orders = await _orders.Find(o => o.UserId == userId).SortByDescending(o => o.CreatedAt).ToListAsync();
+        var dtos = new List<OrderResultDto>();
+        foreach (var o in orders)
+        {
+            var p = await _payments.Find(pay => pay.OrderId == o.Id).FirstOrDefaultAsync();
+            var dto = MapToDto(o);
+            if (p != null && o.PaymentStatus == "Unpaid") dto.PaymentUrl = p.CheckoutUrl;
+            dtos.Add(dto);
+        }
+        return dtos;
+    }
+
+    public async Task<OrderResultDto?> GetOrderDetailAsync(string orderId, string userId)
+    {
+        var order = await _orders.Find(o => o.Id == orderId && o.UserId == userId).FirstOrDefaultAsync();
+        if (order == null) return null;
+        var p = await _payments.Find(pay => pay.OrderId == order.Id).FirstOrDefaultAsync();
+        var dto = MapToDto(order);
+        if (p != null && order.PaymentStatus == "Unpaid") dto.PaymentUrl = p.CheckoutUrl;
+        return dto;
+    }
+
+    public async Task<bool> CancelOrderAsync(string orderId, string userId)
+    {
+        var result = await _orders.UpdateOneAsync(
+            o => o.Id == orderId && o.UserId == userId && o.Status == "AwaitingPayment",
+            Builders<Order>.Update.Set(o => o.Status, "Cancelled")
+        );
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<List<OrderResultDto>> GetOrdersByStatusAsync(string status)
+    {
+        var orders = await _orders.Find(o => o.Status == status).ToListAsync();
+        return orders.Select(MapToDto).ToList();
+    }
+
+    public async Task<List<OrderResultDto>> GetAllOrdersAsync()
+    {
+        var orders = await _orders.Find(_ => true).ToListAsync();
+        return orders.Select(MapToDto).ToList();
+    }
+
+    public async Task<bool> UpdateOrderStatusAsync(string orderId, string status)
+    {
+        var result = await _orders.UpdateOneAsync(o => o.Id == orderId, Builders<Order>.Update.Set(o => o.Status, status));
+        return result.ModifiedCount > 0;
+    }
+
+    private static OrderResultDto MapToDto(Order o)
+    {
+        return new OrderResultDto
+        {
+            Id = o.Id,
+            TotalPrice = o.TotalPrice,
+            Status = o.Status,
+            PaymentStatus = o.PaymentStatus,
+            DeliveryAddress = o.DeliveryAddress,
+            CreatedAt = o.CreatedAt,
+            Items = o.OrderItems.Select(i => new OrderItemResultDto
             {
-                Id = o.Id,
-                TotalPrice = o.TotalPrice,
-                Status = o.Status,
-                CreatedAt = o.CreatedAt,
-                Items = o.OrderItems.Select(i => new OrderItemDto
-                {
-                    ProductId = i.ProductId,
-                    Quantity = i.Quantity,
-                    Size = i.Size
-                }).ToList()
-            })
-            .ToListAsync();
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                Quantity = i.Quantity,
+                UnitPrice = i.UnitPrice,
+                Size = i.Size
+            }).ToList()
+        };
     }
 }

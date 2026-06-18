@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PizzaApp.Core.Entities;
 
 namespace PizzaApp.Infrastructure.Data;
 
+// LƯU Ý: Nếu bạn dùng hoàn toàn MongoDB, bạn có thể xóa file này và AppDbContext
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
@@ -19,8 +14,6 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
 
-
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Product>()
@@ -29,5 +22,3 @@ public class AppDbContext : DbContext
         .HasForeignKey(p => p.CategoryId);
     }
 }
-
-
