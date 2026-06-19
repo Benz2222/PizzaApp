@@ -12,4 +12,5 @@ public interface IAuthService
 {
     Task<string?> RegisterAsync(RegisterDto dto);  // trả về JWT token
     Task<string?> LoginAsync(LoginDto dto);         // trả về JWT token
+    Task ResetPasswordAsync(string email, string newPassword);
 }
