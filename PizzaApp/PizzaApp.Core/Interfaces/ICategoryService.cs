@@ -11,12 +11,12 @@ namespace PizzaApp.Core.Interfaces
     {
         Task<List<CategoryDTO>> GetAllAsync();
 
-        Task<CategoryDTO?> GetByIdAsync(int id);
+        Task<CategoryDTO?> GetByIdAsync(string id);
 
         Task<CategoryDTO> CreateAsync(CreateCategoryDTO dto);
 
-        Task<bool> UpdateAsync(int id, UpdateCategoryDTO dto);
+        Task<bool> UpdateAsync(string id, UpdateCategoryDTO dto);
 
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(string id);
     }
 }

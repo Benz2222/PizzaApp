@@ -23,7 +23,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(string id)
         {
             var category = await _categoryService.GetByIdAsync(id);
 
@@ -42,7 +42,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, UpdateCategoryDTO dto)
+        public async Task<IActionResult> Update(string id, UpdateCategoryDTO dto)
         {
             var result = await _categoryService.UpdateAsync(id, dto);
 
@@ -53,7 +53,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(string id)
         {
             var result = await _categoryService.DeleteAsync(id);
 

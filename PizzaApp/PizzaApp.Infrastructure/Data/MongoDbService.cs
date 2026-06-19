@@ -36,7 +36,21 @@ public class MongoDbService
             BsonClassMap.RegisterClassMap<Product>(cm =>
             {
                 cm.AutoMap();
+                cm.SetIgnoreExtraElements(true); // Bỏ qua field cũ còn sót (vd "Category") để không crash khi đọc
                 cm.MapIdProperty(p => p.Id)
+                  .SetIdGenerator(StringObjectIdGenerator.Instance) // Tự sinh ID cho sản phẩm mới
+                  .SetSerializer(new StringSerializer(BsonType.String));
+            });
+        }
+
+        if (!BsonClassMap.IsClassMapRegistered(typeof(Category)))
+        {
+            BsonClassMap.RegisterClassMap<Category>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetIgnoreExtraElements(true);
+                cm.MapIdProperty(c => c.Id)
+                  .SetIdGenerator(StringObjectIdGenerator.Instance)
                   .SetSerializer(new StringSerializer(BsonType.String));
             });
         }
