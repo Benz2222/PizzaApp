@@ -44,23 +44,34 @@ namespace PizzaApp.API.Controllers
         [HttpPost("seed-products")]
         public async Task<IActionResult> SeedProducts()
         {
-            var collection = _mongoService.GetCollection<Product>("Products");
+            var productCol = _mongoService.GetCollection<Product>("Products");
+            var categoryCol = _mongoService.GetCollection<Category>("Categories");
 
-            // Xóa hết sản phẩm cũ
-            await collection.DeleteManyAsync(_ => true);
+            // Xóa hết dữ liệu cũ
+            await productCol.DeleteManyAsync(_ => true);
+            await categoryCol.DeleteManyAsync(_ => true);
 
-            // Tạo sản phẩm mới với ID đơn giản "1", "2", "3", "4"
+            // Tạo Categories với ID đơn giản
+            var categories = new List<Category>
+            {
+                new Category { Id = "c1", Name = "Truyền thống" },
+                new Category { Id = "c2", Name = "Hải sản" },
+                new Category { Id = "c3", Name = "Đặc biệt" },
+                new Category { Id = "c4", Name = "Chay" }
+            };
+            await categoryCol.InsertManyAsync(categories);
+
+            // Tạo sản phẩm mới với ID đơn giản "1", "2", "3", "4", liên kết qua CategoryId
             var products = new List<Product>
             {
-                new Product { Id = "1", Name = "Margherita", Description = "Phô mai, cà chua, húng quế", Price = 89000, Category = "Truyền thống", ImageUrl = "margherita.jpg", IsAvailable = true },
-                new Product { Id = "2", Name = "Hải Sản", Description = "Tôm, mực, sốt tỏi bơ", Price = 129000, Category = "Hải sản", ImageUrl = "seafood.jpg", IsAvailable = true },
-                new Product { Id = "3", Name = "BBQ Bò", Description = "Thịt bò, hành tây, sốt BBQ", Price = 119000, Category = "Đặc biệt", ImageUrl = "bbq.jpg", IsAvailable = true },
-                new Product { Id = "4", Name = "Veggie", Description = "Rau củ, nấm, phô mai", Price = 79000, Category = "Chay", ImageUrl = "veggie.jpg", IsAvailable = true }
+                new Product { Id = "1", Name = "Margherita", Description = "Phô mai, cà chua, húng quế", Price = 89000, CategoryId = "c1", ImageUrl = "margherita.jpg", IsAvailable = true },
+                new Product { Id = "2", Name = "Hải Sản", Description = "Tôm, mực, sốt tỏi bơ", Price = 129000, CategoryId = "c2", ImageUrl = "seafood.jpg", IsAvailable = true },
+                new Product { Id = "3", Name = "BBQ Bò", Description = "Thịt bò, hành tây, sốt BBQ", Price = 119000, CategoryId = "c3", ImageUrl = "bbq.jpg", IsAvailable = true },
+                new Product { Id = "4", Name = "Veggie", Description = "Rau củ, nấm, phô mai", Price = 79000, CategoryId = "c4", ImageUrl = "veggie.jpg", IsAvailable = true }
             };
+            await productCol.InsertManyAsync(products);
 
-            await collection.InsertManyAsync(products);
-
-            return Ok(new { message = "Đã seed 4 sản phẩm với ID 1, 2, 3, 4 vào MongoDB!", products });
+            return Ok(new { message = "Đã seed 4 categories và 4 sản phẩm vào MongoDB!", categories, products });
         }
     }
 }

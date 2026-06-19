@@ -1,4 +1,4 @@
-﻿using MongoDB.Driver;
+using MongoDB.Driver;
 using PizzaApp.Core.DTOs.Product;
 using PizzaApp.Core.Entities;
 using PizzaApp.Core.Interfaces;
@@ -9,54 +9,38 @@ namespace PizzaApp.Infrastructure.Services;
 public class ProductService : IProductService
 {
     private readonly IMongoCollection<Product> _products;
+    private readonly IMongoCollection<Category> _categories;
 
     public ProductService(MongoDbService mongoDb)
     {
         _products = mongoDb.GetCollection<Product>("Products");
+        _categories = mongoDb.GetCollection<Category>("Categories");
     }
 
     public async Task<List<ProductDto>> GetAllAsync()
     {
-        return await _db.Products
-            .Where(p => p.IsAvailable)
-            .Select(p => new ProductDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                ImageUrl = p.ImageUrl,
-                CategoryId = p.CategoryId,
-                CategoryName = p.Category.Name,
-                IsAvailable = p.IsAvailable
-            })
-            .ToListAsync();
+        var products = await _products.Find(p => p.IsAvailable).ToListAsync();
+
+        // Lấy tên category một lần để tránh query lặp (N+1)
+        var categories = await _categories.Find(_ => true).ToListAsync();
+        var categoryNames = categories.ToDictionary(c => c.Id, c => c.Name);
+
+        return products.Select(p => MapToDto(p,
+            categoryNames.TryGetValue(p.CategoryId, out var name) ? name : string.Empty)).ToList();
     }
 
     public async Task<ProductDto?> GetByIdAsync(string id)
     {
-        var p = await _db.Products.Include(p => p.Category)
-        .FirstOrDefaultAsync(p => p.Id == id);
+        var p = await _products.Find(p => p.Id == id).FirstOrDefaultAsync();
         if (p == null) return null;
 
-        return new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Description = p.Description,
-            Price = p.Price,
-            ImageUrl = p.ImageUrl,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category.Name,
-            IsAvailable = p.IsAvailable
-        };
+        var category = await _categories.Find(c => c.Id == p.CategoryId).FirstOrDefaultAsync();
+        return MapToDto(p, category?.Name ?? string.Empty);
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductDTO dto)
     {
-        var category = await _db.Categories
-        .FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
-
+        var category = await _categories.Find(c => c.Id == dto.CategoryId).FirstOrDefaultAsync();
         if (category == null)
             throw new Exception("Category not found");
 
@@ -67,60 +51,43 @@ public class ProductService : IProductService
             Price = dto.Price,
             ImageUrl = dto.ImageUrl,
             CategoryId = dto.CategoryId,
-            //Category = category,
             IsAvailable = true
         };
 
+        await _products.InsertOneAsync(product);
 
-
-        _db.Products.Add(product);
-
-        await _db.SaveChangesAsync();
-
-        return new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Description = product.Description,
-            Price = product.Price,
-            ImageUrl = product.ImageUrl,
-            CategoryId = product.CategoryId,
-            CategoryName = category.Name,
-            IsAvailable = product.IsAvailable
-        };
+        return MapToDto(product, category.Name);
     }
 
-    public async Task<bool> UpdateAsync(int id, UpdateProductDTO dto)
+    public async Task<bool> UpdateAsync(string id, UpdateProductDTO dto)
     {
-        var product = await _db.Products.FindAsync(id);
+        var update = Builders<Product>.Update
+            .Set(p => p.Name, dto.Name)
+            .Set(p => p.Description, dto.Description)
+            .Set(p => p.Price, dto.Price)
+            .Set(p => p.ImageUrl, dto.ImageUrl)
+            .Set(p => p.CategoryId, dto.CategoryId)
+            .Set(p => p.IsAvailable, dto.IsAvailable);
 
-        if (product == null)
-            return false;
-
-        product.Name = dto.Name;
-        product.Description = dto.Description;
-        product.Price = dto.Price;
-        product.ImageUrl = dto.ImageUrl;
-        product.CategoryId = dto.CategoryId;
-        product.IsAvailable = dto.IsAvailable;
-
-        await _db.SaveChangesAsync();
-
-        return true;
+        var result = await _products.UpdateOneAsync(p => p.Id == id, update);
+        return result.MatchedCount > 0;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        var product = await _db.Products.FindAsync(id);
-
-        if (product == null)
-            return false;
-
-        _db.Products.Remove(product);
-
-        await _db.SaveChangesAsync();
-
-        return true;
+        var result = await _products.DeleteOneAsync(p => p.Id == id);
+        return result.DeletedCount > 0;
     }
 
+    private static ProductDto MapToDto(Product p, string categoryName) => new ProductDto
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Description = p.Description,
+        Price = p.Price,
+        ImageUrl = p.ImageUrl,
+        CategoryId = p.CategoryId,
+        CategoryName = categoryName,
+        IsAvailable = p.IsAvailable
+    };
 }
