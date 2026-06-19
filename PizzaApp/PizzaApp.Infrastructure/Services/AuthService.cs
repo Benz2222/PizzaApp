@@ -51,6 +51,20 @@ public class AuthService : IAuthService
         return GenerateToken(user);
     }
 
+    public async Task ResetPasswordAsync(string email, string newPassword)
+    {
+        var user = await _users.Find(u => u.Email == email).FirstOrDefaultAsync();
+        if (user is null)
+            throw new InvalidOperationException("Email không tồn tại!");
+
+        var newHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
+        await _users.UpdateOneAsync(
+            u => u.Id == user.Id,
+            Builders<User>.Update.Set(u => u.PasswordHash, newHash)
+        );
+    }
+
     private string GenerateToken(User user)
     {
         var jwtSettings = _config.GetSection("JwtSettings");
