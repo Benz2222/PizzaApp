@@ -72,6 +72,7 @@ public class MongoDbService
             {
                 cm.AutoMap();
                 cm.MapIdProperty(u => u.Id)
+                  .SetIdGenerator(StringObjectIdGenerator.Instance)
                   .SetSerializer(new StringSerializer(BsonType.String));
             });
         }
