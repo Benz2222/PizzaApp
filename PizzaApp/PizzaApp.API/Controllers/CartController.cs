@@ -16,7 +16,7 @@ public class CartController : ControllerBase
     {
         _cartService = cartService;
     }
-    [HttpGet]
+
     private string GetUserId()
     {
         var id = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -41,14 +41,14 @@ public class CartController : ControllerBase
     [HttpPatch("{id}/quantity")]
     public async Task<IActionResult> UpdateQuantity(string id, [FromBody] int quantity)
     {
-        await _cartService.UpdateQuantityAsync(id, quantity);
+        await _cartService.UpdateQuantityAsync(GetUserId(), id, quantity);
         return Ok(new { message = "Đã cập nhật số lượng" });
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> RemoveFromCart(string id)
     {
-        await _cartService.RemoveFromCartAsync(id);
+        await _cartService.RemoveFromCartAsync(GetUserId(), id);
         return Ok(new { message = "Đã xóa khỏi giỏ hàng" });
     }
 
