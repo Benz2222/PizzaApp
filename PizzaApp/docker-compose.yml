@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo-data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: PizzaApp.API/Dockerfile
+    depends_on:
+      - mongo
+    ports:
+      - "5211:80"
+    environment:
+      MongoDB__ConnectionString: "mongodb://root:example@mongo:27017/?authSource=admin"
+      MongoDB__DatabaseName: "PizzaApp"
+      JwtSettings__SecretKey: "DockerLocalSecretKeyDontUseInProd"
+      JwtSettings__Issuer: "PizzaApp"
+      JwtSettings__Audience: "PizzaAppUsers"
+      PayOS__ClientId: ""
+      PayOS__ApiKey: ""
+      PayOS__ChecksumKey: ""
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

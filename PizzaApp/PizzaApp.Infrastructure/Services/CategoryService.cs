@@ -1,94 +1,69 @@
-﻿using PizzaApp.Core.DTOs.Category;
+using MongoDB.Driver;
+using PizzaApp.Core.DTOs.Category;
 using PizzaApp.Core.Entities;
 using PizzaApp.Core.Interfaces;
 using PizzaApp.Infrastructure.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
-namespace PizzaApp.Infrastructure.Services
+namespace PizzaApp.Infrastructure.Services;
+
+public class CategoryService : ICategoryService
 {
-    public class CategoryService : ICategoryService
+    private readonly IMongoCollection<Category> _categories;
+
+    public CategoryService(MongoDbService mongoDb)
     {
-        private readonly AppDbContext _context;
+        _categories = mongoDb.GetCollection<Category>("Categories");
+    }
 
-        public CategoryService(AppDbContext context)
+    public async Task<List<CategoryDTO>> GetAllAsync()
+    {
+        var categories = await _categories.Find(_ => true).ToListAsync();
+        return categories.Select(c => new CategoryDTO
         {
-            _context = context;
-        }
+            Id = c.Id,
+            Name = c.Name
+        }).ToList();
+    }
 
-        public async Task<List<CategoryDTO>> GetAllAsync()
+    public async Task<CategoryDTO?> GetByIdAsync(string id)
+    {
+        var category = await _categories.Find(c => c.Id == id).FirstOrDefaultAsync();
+        if (category == null) return null;
+
+        return new CategoryDTO
         {
-            return await _context.Categories
-                .Select(c => new CategoryDTO
-                {
-                    Id = c.Id,
-                    Name = c.Name
-                })
-                .ToListAsync();
-        }
+            Id = category.Id,
+            Name = category.Name
+        };
+    }
 
-        public async Task<CategoryDTO?> GetByIdAsync(int id)
+    public async Task<CategoryDTO> CreateAsync(CreateCategoryDTO dto)
+    {
+        var category = new Category
         {
-            var category = await _context.Categories.FindAsync(id);
+            Name = dto.Name
+        };
 
-            if (category == null)
-                return null;
+        await _categories.InsertOneAsync(category);
 
-            return new CategoryDTO
-            {
-                Id = category.Id,
-                Name = category.Name
-            };
-        }
-
-        public async Task<CategoryDTO> CreateAsync(CreateCategoryDTO dto)
+        return new CategoryDTO
         {
-            var category = new Category
-            {
-                Name = dto.Name
-            };
+            Id = category.Id,
+            Name = category.Name
+        };
+    }
 
-            _context.Categories.Add(category);
+    public async Task<bool> UpdateAsync(string id, UpdateCategoryDTO dto)
+    {
+        var result = await _categories.UpdateOneAsync(
+            c => c.Id == id,
+            Builders<Category>.Update.Set(c => c.Name, dto.Name));
+        return result.MatchedCount > 0;
+    }
 
-            await _context.SaveChangesAsync();
-
-            return new CategoryDTO
-            {
-                Id = category.Id,
-                Name = category.Name
-            };
-        }
-
-        public async Task<bool> UpdateAsync(int id, UpdateCategoryDTO dto)
-        {
-            var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
-                return false;
-
-            category.Name = dto.Name;
-
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
-
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
-                return false;
-
-            _context.Categories.Remove(category);
-
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
+    public async Task<bool> DeleteAsync(string id)
+    {
+        var result = await _categories.DeleteOneAsync(c => c.Id == id);
+        return result.DeletedCount > 0;
     }
 }
