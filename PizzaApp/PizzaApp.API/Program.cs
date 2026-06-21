@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using PizzaApp.Infrastructure.Data;
@@ -11,10 +10,6 @@ using System.Security.Claims;
 using Net.payOS;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Database
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // MongoDB
 builder.Services.AddSingleton<MongoDbService>();

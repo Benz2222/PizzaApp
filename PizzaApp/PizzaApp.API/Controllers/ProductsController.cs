@@ -40,7 +40,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, UpdateProductDTO dto)
+    public async Task<IActionResult> Update(string id, UpdateProductDTO dto)
     {
         var result = await _productService.UpdateAsync(id, dto);
 
@@ -51,7 +51,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
         var result = await _productService.DeleteAsync(id);
 
