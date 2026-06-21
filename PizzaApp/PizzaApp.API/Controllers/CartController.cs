@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using PizzaApp.Core.DTOs.Cart;
 using PizzaApp.Core.Interfaces;
 
@@ -6,6 +7,7 @@ namespace PizzaApp.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class CartController : ControllerBase
 {
     private readonly ICartService _cartService;
@@ -14,8 +16,14 @@ public class CartController : ControllerBase
     {
         _cartService = cartService;
     }
-
-    private string GetUserId() => "666554433221100bbccddeeff"; // Giả lập UserId
+    [HttpGet]
+    private string GetUserId()
+    {
+        var id = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(id))
+            throw new UnauthorizedAccessException("User id claim missing");
+        return id;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetCart()
