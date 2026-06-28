@@ -59,12 +59,17 @@ public class OrderService : IOrderService
             payOSItems.Add(new ItemData(product.Name, item.Quantity, (int)product.Price));
         }
 
+        // Không cho tạo đơn rỗng (vd tất cả ProductId đều không hợp lệ)
+        if (!order.OrderItems.Any())
+            throw new System.Exception("Không có sản phẩm hợp lệ trong đơn hàng.");
+
         order.TotalPrice = total;
         await _orders.InsertOneAsync(order);
 
         try
         {
-            long orderCode = long.Parse(System.DateTime.Now.ToString("yyyyMMddHHmmss"));
+            // orderCode phải DUY NHẤT với PayOS -> dùng mốc thời gian mili-giây thay vì giây
+            long orderCode = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             var paymentData = new PaymentData(
                 orderCode: orderCode,
@@ -89,7 +94,10 @@ public class OrderService : IOrderService
         }
         catch (System.Exception ex)
         {
-            System.Console.WriteLine("Lỗi PayOS: " + ex.Message);
+            // PayOS lỗi -> xóa đơn vừa tạo để không còn đơn rác, rồi báo lỗi ra ngoài
+            // (Controller sẽ trả lỗi và KHÔNG xóa giỏ hàng của khách)
+            await _orders.DeleteOneAsync(o => o.Id == order.Id);
+            throw new System.Exception("Không tạo được link thanh toán PayOS: " + ex.Message);
         }
 
         return order.Id;
