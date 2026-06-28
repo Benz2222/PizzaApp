@@ -61,22 +61,22 @@ public class CartService : ICartService
         }
     }
 
-    public async Task UpdateQuantityAsync(string cartItemId, int quantity)
+    public async Task UpdateQuantityAsync(string userId, string cartItemId, int quantity)
     {
         if (quantity <= 0)
         {
-            await _cartItems.DeleteOneAsync(c => c.Id == cartItemId);
+            await _cartItems.DeleteOneAsync(c => c.Id == cartItemId && c.UserId == userId);
         }
         else
         {
-            await _cartItems.UpdateOneAsync(c => c.Id == cartItemId,
+            await _cartItems.UpdateOneAsync(c => c.Id == cartItemId && c.UserId == userId,
                 Builders<CartItem>.Update.Set(c => c.Quantity, quantity));
         }
     }
 
-    public async Task RemoveFromCartAsync(string cartItemId)
+    public async Task RemoveFromCartAsync(string userId, string cartItemId)
     {
-        await _cartItems.DeleteOneAsync(c => c.Id == cartItemId);
+        await _cartItems.DeleteOneAsync(c => c.Id == cartItemId && c.UserId == userId);
     }
 
     public async Task ClearCartAsync(string userId)
