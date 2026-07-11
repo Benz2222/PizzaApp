@@ -18,16 +18,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() { _isLoading = true; _error = null; });
-    final success = await AuthService.login(
+    final error = await AuthService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
-    if (success && mounted) {
+    if (error == null) {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     } else {
-      setState(() => _error = 'Email hoặc mật khẩu không đúng!');
+      setState(() => _error = error);
     }
   }
 
