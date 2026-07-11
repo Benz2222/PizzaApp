@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/cart_provider.dart';
-import '../services/auth_service.dart';
-import '../core/constants.dart';
+import '../services/order_service.dart';
 import 'order_success_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -24,47 +22,41 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _isOrdering = true);
 
     try {
-      final token = await AuthService.getToken();
-      final res = await http.post(
-        Uri.parse('${AppConstants.baseUrl}/orders'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'deliveryAddress': _addressController.text,
-          'items': cart.items.map((i) => {
-            'productId': i.product.id,
-            'quantity': i.quantity,
-            'size': i.size,
-          }).toList(),
-        }),
+      final result = await OrderService.checkout(
+        cart.items,
+        _addressController.text.trim(),
       );
+      cart.clear();
 
-      if (res.statusCode == 200 && mounted) {
-        final data = jsonDecode(res.body);
-        cart.clear();
+      // Mở link thanh toán PayOS (nếu có)
+      if (result.checkoutUrl.isNotEmpty) {
+        final uri = Uri.parse(result.checkoutUrl);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+
+      if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) =>
-              OrderSuccessScreen(orderId: data['orderId'])),
-              (route) => route.isFirst,
+          MaterialPageRoute(
+            builder: (_) => OrderSuccessScreen(
+              orderId: result.orderId,
+              paymentUrl: result.checkoutUrl,
+            ),
+          ),
+          (route) => route.isFirst,
         );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Có lỗi xảy ra, thử lại!'),
-                  backgroundColor: Colors.red));
-        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi: $e'),
-                backgroundColor: Colors.red));
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
-    setState(() => _isOrdering = false);
+    if (mounted) setState(() => _isOrdering = false);
   }
 
   @override
