@@ -2,7 +2,12 @@
     <application
         android:label="pizza_app_flutter"
         android:name="${applicationName}"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
+        <!-- usesCleartextTraffic: cho phép gọi HTTP (không TLS) tới API dev.
+             Khi lên production dùng HTTPS thì nên bỏ dòng này. -->
+        <!-- INTERNET permission được Flutter tự thêm ở bản debug -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
