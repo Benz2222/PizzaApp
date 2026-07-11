@@ -16,6 +16,7 @@ dependencies:
   http: ^1.2.0                  # gọi API
   shared_preferences: ^2.2.2    # lưu token
   provider: ^6.1.2              # state management
+  url_launcher: ^6.3.0          # mở link thanh toán PayOS
 
 
   # The following adds the Cupertino Icons font to your application.

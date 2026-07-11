@@ -24,19 +24,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() { _isLoading = true; _error = null; });
-    final success = await AuthService.register(
+    final error = await AuthService.register(
       _nameController.text.trim(),
       _emailController.text.trim(),
       _passwordController.text.trim(),
       _phoneController.text.trim(),
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
-    if (success && mounted) {
+    if (error == null) {
       Navigator.pushAndRemoveUntil(context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
               (route) => false);
     } else {
-      setState(() => _error = 'Email đã được sử dụng hoặc có lỗi xảy ra!');
+      setState(() => _error = error);
     }
   }
 

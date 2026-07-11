@@ -22,39 +22,65 @@ class AuthService {
     await prefs.remove('token');
   }
 
-  // Đăng ký
-  static Future<bool> register(String fullName, String email,
+  // Đăng ký — trả null nếu thành công, ngược lại trả chuỗi lỗi để hiển thị
+  static Future<String?> register(String fullName, String email,
       String password, String phone) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'fullName': fullName,
-        'email': email,
-        'password': password,
-        'phoneNumber': phone,
-      }),
-    );
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      await saveToken(data['token']);
-      return true;
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'fullName': fullName,
+          'email': email,
+          'password': password,
+          'phoneNumber': phone,
+        }),
+      );
+      if (res.statusCode == 200) {
+        final token = jsonDecode(res.body)['data']?['token'];
+        if (token != null) {
+          await saveToken(token);
+          return null;
+        }
+      }
+      return _parseError(res.body, 'Đăng ký thất bại');
+    } catch (_) {
+      return 'Không kết nối được máy chủ';
     }
-    return false;
   }
 
-  // Đăng nhập
-  static Future<bool> login(String email, String password) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      await saveToken(data['token']);
-      return true;
+  // Đăng nhập — trả null nếu thành công, ngược lại trả chuỗi lỗi
+  static Future<String?> login(String email, String password) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      if (res.statusCode == 200) {
+        final token = jsonDecode(res.body)['data']?['token'];
+        if (token != null) {
+          await saveToken(token);
+          return null;
+        }
+      }
+      return _parseError(res.body, 'Email hoặc mật khẩu không đúng');
+    } catch (_) {
+      return 'Không kết nối được máy chủ';
     }
-    return false;
+  }
+
+  // Lấy thông báo lỗi thật từ response của BE
+  static String _parseError(String body, String fallback) {
+    try {
+      final data = jsonDecode(body);
+      if (data['message'] != null) return data['message'];
+      // Lỗi validation dạng { errors: { Field: ["thông báo"] } }
+      if (data['errors'] is Map) {
+        final first = (data['errors'] as Map).values.first;
+        if (first is List && first.isNotEmpty) return first.first.toString();
+      }
+    } catch (_) {}
+    return fallback;
   }
 }
