@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../providers/cart_provider.dart';
 import 'detail_screen.dart';
 import 'cart_screen.dart';
+import 'orders_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -312,6 +313,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const CartScreen())),
                   badge: cart.totalCount),
+              _navItem(Icons.receipt_long_outlined, 'Đơn hàng', false,
+                      () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const OrdersScreen()))),
               _navItem(Icons.person_outline, 'Tài khoản', false, () async {
                 await AuthService.logout();
                 if (mounted) {
