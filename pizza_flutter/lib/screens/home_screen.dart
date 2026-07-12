@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
+import '../services/category_service.dart';
 import '../services/auth_service.dart';
 import '../providers/cart_provider.dart';
 import 'detail_screen.dart';
@@ -22,9 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'Tất cả';
   bool _isLoading = true;
 
-  final List<String> _categories = [
-    'Tất cả', 'Truyền thống', 'Hải sản', 'Chay', 'Đặc biệt'
-  ];
+  // Danh mục tải động từ BE (luôn có 'Tất cả' đứng đầu)
+  List<String> _categories = ['Tất cả'];
 
   final Map<String, String> _categoryEmoji = {
     'Truyền thống': '🍕',
@@ -37,15 +37,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+    _loadCategories();
   }
 
   Future<void> _loadProducts() async {
     final products = await ProductService.getAll();
+    if (!mounted) return;
     setState(() {
       _products = products;
-      _filtered = products;
+      _filtered = _selectedCategory == 'Tất cả'
+          ? products
+          : products.where((p) => p.category == _selectedCategory).toList();
       _isLoading = false;
     });
+  }
+
+  Future<void> _loadCategories() async {
+    final names = await CategoryService.getNames();
+    if (!mounted || names.isEmpty) return;
+    setState(() => _categories = ['Tất cả', ...names]);
   }
 
   void _filterCategory(String cat) {
