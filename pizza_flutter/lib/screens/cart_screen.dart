@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart';
+import '../widgets/product_image.dart';
 import 'order_success_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -121,15 +122,16 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 56, height: 56,
               color: const Color(0xFFFAECE7),
-              borderRadius: BorderRadius.circular(10),
+              child: ProductImage(
+                  imageUrl: item.product.imageUrl,
+                  emoji: emoji[item.product.category] ?? '🍕',
+                  emojiSize: 30),
             ),
-            alignment: Alignment.center,
-            child: Text(emoji[item.product.category] ?? '🍕',
-                style: const TextStyle(fontSize: 30)),
           ),
           const SizedBox(width: 12),
           Expanded(

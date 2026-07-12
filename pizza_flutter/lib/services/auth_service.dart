@@ -109,6 +109,21 @@ class AuthService {
     }
   }
 
+  // Lấy thông tin user đang đăng nhập (GET /auth/me)
+  static Future<Map<String, dynamic>?> getMe() async {
+    try {
+      final token = await getToken();
+      final res = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/auth/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   // Lấy thông báo lỗi thật từ response của BE
   static String _parseError(String body, String fallback) {
     try {
