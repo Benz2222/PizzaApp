@@ -173,12 +173,13 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _menuTile(IconData icon, String label, VoidCallback onTap) {
-    return Container(
+    return Card(
+      elevation: 0,
+      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD3D1C7), width: 0.5),
+        side: const BorderSide(color: Color(0xFFD3D1C7), width: 0.5),
       ),
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFFD85A30)),
