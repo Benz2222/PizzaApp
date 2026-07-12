@@ -85,6 +85,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
+app.UseStaticFiles(); // phục vụ ảnh trong wwwroot (vd /uploads/xxx.jpg)
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
