@@ -31,6 +31,39 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Future<void> _confirmCancel(OrderModel order) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Hủy đơn hàng?'),
+        content: const Text('Bạn có chắc muốn hủy đơn hàng này?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Không')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Hủy đơn',
+                  style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final error = await OrderService.cancelOrder(order.id);
+    if (!mounted) return;
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã hủy đơn hàng'),
+        backgroundColor: Color(0xFFD85A30),
+      ));
+      _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,6 +199,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
+              ),
+            ),
+          ],
+          if (order.status == 'AwaitingPayment') ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton(
+                onPressed: () => _confirmCancel(order),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('HỦY ĐƠN',
+                    style: TextStyle(color: Colors.red,
+                        fontWeight: FontWeight.w700, letterSpacing: 0.5)),
               ),
             ),
           ],

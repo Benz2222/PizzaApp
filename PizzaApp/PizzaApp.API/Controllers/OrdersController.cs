@@ -86,14 +86,6 @@ public class OrdersController : ControllerBase
         return Ok(orders);
     }
 
-    [HttpPost("{id}/confirm-payment")]
-    public async Task<IActionResult> ConfirmPayment(string id)
-    {
-        var success = await _orderService.ConfirmPaymentAsync(id);
-        if (!success) return BadRequest(new { message = "Xác nhận thất bại." });
-        return Ok(new { message = "Thanh toán thành công (Demo)!" });
-    }
-
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> CancelOrder(string id)
     {

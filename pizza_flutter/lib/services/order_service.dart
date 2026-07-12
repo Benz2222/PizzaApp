@@ -78,4 +78,49 @@ class OrderService {
     }
     return [];
   }
+
+  /// (Shipper) Đơn đang chờ giao (status = Preparing).
+  static Future<List<OrderModel>> getShipperOrders() async {
+    final headers = await _headers();
+    final res = await http.get(
+      Uri.parse('${AppConstants.baseUrl}/orders/shipper/available'),
+      headers: headers,
+    );
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+      return data.map((e) => OrderModel.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// (Shipper/Admin) Cập nhật trạng thái đơn — trả null nếu thành công.
+  static Future<String?> updateStatus(String orderId, String status) async {
+    final headers = await _headers();
+    final res = await http.patch(
+      Uri.parse('${AppConstants.baseUrl}/orders/$orderId/status'),
+      headers: headers,
+      body: jsonEncode(status),
+    );
+    if (res.statusCode == 200) return null;
+    try {
+      return jsonDecode(res.body)['message'] ?? 'Cập nhật thất bại';
+    } catch (_) {
+      return 'Cập nhật thất bại';
+    }
+  }
+
+  /// Hủy đơn — trả null nếu thành công, ngược lại trả chuỗi lỗi.
+  static Future<String?> cancelOrder(String orderId) async {
+    final headers = await _headers();
+    final res = await http.post(
+      Uri.parse('${AppConstants.baseUrl}/orders/$orderId/cancel'),
+      headers: headers,
+    );
+    if (res.statusCode == 200) return null;
+    try {
+      return jsonDecode(res.body)['message'] ?? 'Hủy đơn thất bại';
+    } catch (_) {
+      return 'Hủy đơn thất bại';
+    }
+  }
 }

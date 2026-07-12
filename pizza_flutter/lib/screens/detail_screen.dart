@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
+import '../widgets/product_image.dart';
 import 'cart_screen.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -38,12 +39,16 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           Stack(
             children: [
-              Container(
+              SizedBox(
                 height: 260,
-                color: const Color(0xFFFAECE7),
-                alignment: Alignment.center,
-                child: Text(emoji,
-                    style: const TextStyle(fontSize: 100)),
+                width: double.infinity,
+                child: Container(
+                  color: const Color(0xFFFAECE7),
+                  child: ProductImage(
+                      imageUrl: widget.product.imageUrl,
+                      emoji: emoji,
+                      emojiSize: 100),
+                ),
               ),
               Positioned(
                 top: MediaQuery.of(context).padding.top + 8,
