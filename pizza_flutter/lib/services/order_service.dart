@@ -79,13 +79,10 @@ class OrderService {
     return [];
   }
 
-  /// (Shipper) Đơn đang chờ giao (status = Preparing).
-  static Future<List<OrderModel>> getShipperOrders() async {
+  static Future<List<OrderModel>> _getList(String path) async {
     final headers = await _headers();
     final res = await http.get(
-      Uri.parse('${AppConstants.baseUrl}/orders/shipper/available'),
-      headers: headers,
-    );
+        Uri.parse('${AppConstants.baseUrl}$path'), headers: headers);
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
       return data.map((e) => OrderModel.fromJson(e)).toList();
@@ -93,8 +90,26 @@ class OrderService {
     return [];
   }
 
-  /// (Shipper/Admin) Cập nhật trạng thái đơn — trả null nếu thành công.
-  static Future<String?> updateStatus(String orderId, String status) async {
+  static Future<String?> _post(String path, {Object? body}) async {
+    final headers = await _headers();
+    final res = await http.post(Uri.parse('${AppConstants.baseUrl}$path'),
+        headers: headers, body: body == null ? null : jsonEncode(body));
+    if (res.statusCode == 200) return null;
+    try {
+      return jsonDecode(res.body)['message'] ?? 'Thao tác thất bại';
+    } catch (_) {
+      return 'Thao tác thất bại';
+    }
+  }
+
+  // --- ADMIN ---
+  static Future<List<OrderModel>> getAllOrders() => _getList('/orders/all');
+
+  static Future<String?> confirmPayment(String orderId) =>
+      _post('/orders/$orderId/confirm-payment');
+
+  /// Admin đổi trạng thái: Paid -> Preparing -> Ready
+  static Future<String?> adminUpdateStatus(String orderId, String status) async {
     final headers = await _headers();
     final res = await http.patch(
       Uri.parse('${AppConstants.baseUrl}/orders/$orderId/status'),
@@ -108,6 +123,23 @@ class OrderService {
       return 'Cập nhật thất bại';
     }
   }
+
+  // --- SHIPPER ---
+  /// Đơn đang chờ giao (Ready, chưa ai nhận)
+  static Future<List<OrderModel>> getAvailableOrders() =>
+      _getList('/orders/shipper/available');
+
+  /// Đơn shipper này đã nhận
+  static Future<List<OrderModel>> getMyDeliveries() =>
+      _getList('/orders/shipper/mine');
+
+  /// Nhận đơn (Ready -> Delivering)
+  static Future<String?> claimOrder(String orderId) =>
+      _post('/orders/$orderId/claim');
+
+  /// Shipper cập nhật đơn của mình: Delivering -> Done / Cancelled
+  static Future<String?> setDeliveryStatus(String orderId, String status) =>
+      _post('/orders/$orderId/delivery-status', body: status);
 
   /// Hủy đơn — trả null nếu thành công, ngược lại trả chuỗi lỗi.
   static Future<String?> cancelOrder(String orderId) async {
