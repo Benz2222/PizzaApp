@@ -20,7 +20,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) => _load(silent: true));
+    _timer = Timer.periodic(
+      const Duration(seconds: 6),
+      (_) => _load(silent: true),
+    );
   }
 
   @override
@@ -32,11 +35,44 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _isLoading = true);
     final orders = await OrderService.getAllOrders();
-    if (mounted) {
-      setState(() {
-        _orders = orders;
-        _isLoading = false;
-      });
+    if (!mounted) return;
+    if (silent) _notifyChanges(orders);
+    setState(() {
+      _orders = orders;
+      _isLoading = false;
+    });
+  }
+
+  // So sánh với lần trước -> báo khi có đơn mới đã thanh toán / cần xử lý
+  void _notifyChanges(List<OrderModel> fresh) {
+    final prev = {for (final o in _orders) o.id: o.status};
+
+    // Đơn vừa thanh toán (mới xuất hiện ở trạng thái "Paid" hoặc vừa chuyển sang Paid)
+    var newPaid = 0;
+    for (final o in fresh) {
+      if (o.status == 'Paid' && prev[o.id] != 'Paid') newPaid++;
+    }
+    if (newPaid > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(' $newPaid đơn mới đã thanh toán — cần chuẩn bị!'),
+          backgroundColor: const Color(0xFF8E44AD),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Có đơn hoàn toàn mới (kể cả chưa thanh toán)
+    final newOrders = fresh.where((o) => !prev.containsKey(o.id)).length;
+    if (newOrders > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(' $newOrders đơn hàng mới'),
+          backgroundColor: const Color(0xFFD85A30),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -46,8 +82,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     if (err == null) {
       _load(silent: true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(err), backgroundColor: Colors.red));
     }
   }
 
@@ -58,24 +95,31 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFD85A30),
         foregroundColor: Colors.white,
-        title: const Text('Quản lý đơn hàng',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text(
+          'Quản lý đơn hàng',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFD85A30)))
+              child: CircularProgressIndicator(color: Color(0xFFD85A30)),
+            )
           : _orders.isEmpty
-              ? const Center(child: Text('Chưa có đơn hàng',
-                  style: TextStyle(color: Colors.grey)))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: const Color(0xFFD85A30),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _orders.length,
-                    itemBuilder: (_, i) => _buildCard(_orders[i]),
-                  ),
-                ),
+          ? const Center(
+              child: Text(
+                'Chưa có đơn hàng',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: const Color(0xFFD85A30),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _orders.length,
+                itemBuilder: (_, i) => _buildCard(_orders[i]),
+              ),
+            ),
     );
   }
 
@@ -97,25 +141,42 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('#PZL-$shortId',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(
+                '#PZL-$shortId',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               orderStatusBadge(o),
             ],
           ),
           const SizedBox(height: 6),
-          Row(children: [
-            const Icon(Icons.location_on, size: 14, color: Colors.grey),
-            const SizedBox(width: 4),
-            Expanded(child: Text(o.deliveryAddress,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                maxLines: 1, overflow: TextOverflow.ellipsis)),
-            Text('${o.totalPrice.toStringAsFixed(0)}đ',
-                style: const TextStyle(fontWeight: FontWeight.w800,
-                    color: Color(0xFFD85A30))),
-          ]),
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  o.deliveryAddress,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${o.totalPrice.toStringAsFixed(0)}đ',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFD85A30),
+                ),
+              ),
+            ],
+          ),
           const Divider(height: 16),
-          ...o.items.map((it) => Text('• ${it.productName} · Size ${it.size} x${it.quantity}',
-              style: const TextStyle(fontSize: 13))),
+          ...o.items.map(
+            (it) => Text(
+              '• ${it.productName} · Size ${it.size} x${it.quantity}',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
           _buildAction(o),
         ],
       ),
@@ -125,16 +186,25 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   Widget _buildAction(OrderModel o) {
     // Nút hành động tùy trạng thái
     if (o.isUnpaid) {
-      return _btn('XÁC NHẬN THANH TOÁN', const Color(0xFF8E44AD),
-          () => _act(() => OrderService.confirmPayment(o.id)));
+      return _btn(
+        'XÁC NHẬN THANH TOÁN',
+        const Color(0xFF8E44AD),
+        () => _act(() => OrderService.confirmPayment(o.id)),
+      );
     }
     switch (o.status) {
       case 'Paid':
-        return _btn('BẮT ĐẦU CHUẨN BỊ', const Color(0xFFD85A30),
-            () => _act(() => OrderService.adminUpdateStatus(o.id, 'Preparing')));
+        return _btn(
+          'BẮT ĐẦU CHUẨN BỊ',
+          const Color(0xFFD85A30),
+          () => _act(() => OrderService.adminUpdateStatus(o.id, 'Preparing')),
+        );
       case 'Preparing':
-        return _btn('XONG MÓN · CHỜ GIAO', const Color(0xFFBA7517),
-            () => _act(() => OrderService.adminUpdateStatus(o.id, 'Ready')));
+        return _btn(
+          'XONG MÓN · CHỜ GIAO',
+          const Color(0xFFBA7517),
+          () => _act(() => OrderService.adminUpdateStatus(o.id, 'Ready')),
+        );
       case 'Ready':
         return _hint('Chờ shipper nhận đơn...');
       case 'Delivering':
@@ -155,20 +225,31 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          child: Text(label,
-              style: const TextStyle(color: Colors.white,
-                  fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _hint(String text) => Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: Text(text,
-            style: const TextStyle(
-                fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey)),
-      );
+    padding: const EdgeInsets.only(top: 10),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        fontStyle: FontStyle.italic,
+        color: Colors.grey,
+      ),
+    ),
+  );
 }
