@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'admin_products_screen.dart';
 import 'admin_categories_screen.dart';
+import 'admin_orders_screen.dart';
 import 'shipper_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -98,6 +99,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
                     // Khu vực quản trị theo vai trò
                     if (role == 'Admin') ...[
+                      _menuTile(Icons.receipt_long_outlined, 'Quản lý đơn hàng',
+                          () => Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => const AdminOrdersScreen()))),
                       _menuTile(Icons.fastfood_outlined, 'Quản lý sản phẩm',
                           () => Navigator.push(context, MaterialPageRoute(
                               builder: (_) => const AdminProductsScreen()))),

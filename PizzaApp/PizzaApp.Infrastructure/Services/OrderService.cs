@@ -50,6 +50,7 @@ public class OrderService : IOrderService
             {
                 ProductId = item.ProductId,
                 ProductName = product.Name,
+                ProductImageUrl = product.ImageUrl,
                 Quantity = item.Quantity,
                 UnitPrice = product.Price,
                 Size = item.Size
@@ -114,7 +115,7 @@ public class OrderService : IOrderService
             o => o.Id == orderId && o.PaymentStatus == "Unpaid",
             Builders<Order>.Update
                 .Set(o => o.PaymentStatus, "Paid")
-                .Set(o => o.Status, "Preparing")
+                .Set(o => o.Status, "Paid") // đã thanh toán -> chờ admin xử lý
         );
         return result.ModifiedCount > 0;
     }
@@ -160,13 +161,44 @@ public class OrderService : IOrderService
 
     public async Task<List<OrderResultDto>> GetAllOrdersAsync()
     {
-        var orders = await _orders.Find(_ => true).ToListAsync();
+        var orders = await _orders.Find(_ => true).SortByDescending(o => o.CreatedAt).ToListAsync();
         return orders.Select(MapToDto).ToList();
     }
 
     public async Task<bool> UpdateOrderStatusAsync(string orderId, string status)
     {
         var result = await _orders.UpdateOneAsync(o => o.Id == orderId, Builders<Order>.Update.Set(o => o.Status, status));
+        return result.ModifiedCount > 0;
+    }
+
+    // Shipper nhận đơn "Ready" -> "Delivering" + gán ShipperId (atomic, tránh 2 shipper nhận cùng lúc)
+    public async Task<bool> ClaimOrderAsync(string orderId, string shipperId)
+    {
+        var result = await _orders.UpdateOneAsync(
+            o => o.Id == orderId && o.Status == "Ready" && o.ShipperId == "",
+            Builders<Order>.Update
+                .Set(o => o.Status, "Delivering")
+                .Set(o => o.ShipperId, shipperId)
+        );
+        return result.ModifiedCount > 0;
+    }
+
+    // Đơn của shipper này (đang giao / đã giao)
+    public async Task<List<OrderResultDto>> GetShipperOrdersAsync(string shipperId)
+    {
+        var orders = await _orders.Find(o => o.ShipperId == shipperId)
+            .SortByDescending(o => o.CreatedAt).ToListAsync();
+        return orders.Select(MapToDto).ToList();
+    }
+
+    // Shipper đổi trạng thái đơn của mình: Delivering -> Done / Cancelled
+    public async Task<bool> UpdateDeliveryStatusAsync(string orderId, string shipperId, string status)
+    {
+        if (status != "Done" && status != "Cancelled") return false;
+        var result = await _orders.UpdateOneAsync(
+            o => o.Id == orderId && o.ShipperId == shipperId && o.Status == "Delivering",
+            Builders<Order>.Update.Set(o => o.Status, status)
+        );
         return result.ModifiedCount > 0;
     }
 
@@ -179,11 +211,13 @@ public class OrderService : IOrderService
             Status = o.Status,
             PaymentStatus = o.PaymentStatus,
             DeliveryAddress = o.DeliveryAddress,
+            ShipperId = o.ShipperId,
             CreatedAt = o.CreatedAt,
             Items = o.OrderItems.Select(i => new OrderItemResultDto
             {
                 ProductId = i.ProductId,
                 ProductName = i.ProductName,
+                ProductImageUrl = i.ProductImageUrl,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 Size = i.Size

@@ -11,6 +11,7 @@ public class OrderResultDto
     public string PaymentStatus { get; set; } = "Unpaid";
     public string PaymentUrl { get; set; } = string.Empty;
     public string DeliveryAddress { get; set; } = string.Empty;
+    public string ShipperId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public List<OrderItemResultDto> Items { get; set; } = new();
 }
