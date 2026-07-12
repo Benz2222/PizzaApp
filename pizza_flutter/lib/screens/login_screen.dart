@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -82,7 +83,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(color: Colors.red,
                                   fontSize: 13)),
                         ],
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(context,
+                                MaterialPageRoute(builder: (_) =>
+                                    const ForgotPasswordScreen())),
+                            child: const Text('Quên mật khẩu?',
+                                style: TextStyle(color: Color(0xFFD85A30),
+                                    fontWeight: FontWeight.w700, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           height: 48,
