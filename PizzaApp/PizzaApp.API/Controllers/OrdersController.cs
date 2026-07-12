@@ -95,6 +95,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet("shipper/available")]
+    [Authorize(Roles = "Shipper,Admin")]
     public async Task<IActionResult> GetOrdersForShipper()
     {
         var orders = await _orderService.GetOrdersByStatusAsync("Preparing");
@@ -102,6 +103,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Shipper,Admin")]
     public async Task<IActionResult> UpdateStatus(string id, [FromBody] string status)
     {
         var success = await _orderService.UpdateOrderStatusAsync(id, status);

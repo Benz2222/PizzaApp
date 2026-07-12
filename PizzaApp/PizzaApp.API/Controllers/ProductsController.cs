@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.Authorization;
 
 using PizzaApp.Core.Interfaces;
 using PizzaApp.Core.DTOs.Product;
@@ -29,6 +29,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(CreateProductDTO dto)
     {
         var product = await _productService.CreateAsync(dto);
@@ -40,6 +41,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(string id, UpdateProductDTO dto)
     {
         var result = await _productService.UpdateAsync(id, dto);
@@ -51,6 +53,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(string id)
     {
         var result = await _productService.DeleteAsync(id);
