@@ -118,6 +118,22 @@ public class AuthService : IAuthService
         await _users.UpdateOneAsync(u => u.Id == user.Id, update);
     }
 
+    public async Task<UserProfileDto?> GetProfileAsync(string userId)
+    {
+        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+        if (user == null) return null;
+
+        return new UserProfileDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Address = user.Address,
+            Role = user.Role
+        };
+    }
+
     private string GenerateToken(User user)
     {
         var jwtSettings = _config.GetSection("JwtSettings");

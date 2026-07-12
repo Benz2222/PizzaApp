@@ -94,6 +94,15 @@ public class OrdersController : ControllerBase
         return Ok(new { message = "Thanh toán thành công (Demo)!" });
     }
 
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> CancelOrder(string id)
+    {
+        var success = await _orderService.CancelOrderAsync(id, GetUserId());
+        if (!success)
+            return BadRequest(new { message = "Không thể hủy đơn (không tồn tại hoặc đã qua bước thanh toán)." });
+        return Ok(new { message = "Đã hủy đơn hàng." });
+    }
+
     [HttpGet("shipper/available")]
     [Authorize(Roles = "Shipper,Admin")]
     public async Task<IActionResult> GetOrdersForShipper()

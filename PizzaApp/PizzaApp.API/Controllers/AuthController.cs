@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using PizzaApp.Core.DTOs.Auth;
 using PizzaApp.Core.Interfaces;
 
@@ -39,6 +41,24 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Email hoặc mật khẩu không đúng!" });
 
         return Ok(new { message = "Đăng nhập thành công!", data = result });
+    }
+
+    /// <summary>
+    /// Lấy thông tin tài khoản đang đăng nhập (cần token).
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var profile = await _authService.GetProfileAsync(userId);
+        if (profile == null)
+            return NotFound(new { message = "Không tìm thấy tài khoản." });
+
+        return Ok(profile);
     }
 
     /// <summary>
