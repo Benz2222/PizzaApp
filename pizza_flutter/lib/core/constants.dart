@@ -6,7 +6,7 @@ class AppConstants {
   // - Android Emulator: 10.0.2.2 (= localhost của máy tính)
   // Thiết bị thật: đổi thành IP LAN của máy, VD: http://192.168.1.5:5211/api
   static String get baseUrl =>
-      kIsWeb ? 'http://localhost:5211/api' : 'http://10.0.2.2:5211/api';
+      kIsWeb ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
 
   // Host phục vụ ảnh (bỏ phần /api)
   static String get imageHost => baseUrl.replaceAll('/api', '');

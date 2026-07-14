@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using PizzaApp.Order.Core.DTOs;
 using PizzaApp.Order.Core.Interfaces;
 
 namespace PizzaApp.Order.API.Controllers;
@@ -16,22 +15,28 @@ public class OrdersController : ControllerBase
 
     private string UserId() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
 
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout([FromBody] string deliveryAddress)
     {
-        try { return Ok(await _orderService.CreateOrderAsync(UserId(), dto)); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        try
+        {
+            var order = await _orderService.CheckoutFromCartAsync(UserId(), deliveryAddress);
+            return Ok(new
+            {
+                orderId = order.Id,
+                checkoutUrl = order.PaymentUrl,
+                qrCode = order.PaymentQr,
+                message = "Đã tạo đơn hàng thành công!"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMy() => Ok(await _orderService.GetMyOrdersAsync(UserId()));
-
-    [HttpGet("{id}")]
-    public async Task<IActionResult> Detail(string id)
-    {
-        var o = await _orderService.GetOrderDetailAsync(id, UserId());
-        return o == null ? NotFound() : Ok(o);
-    }
+    public async Task<IActionResult> My() => Ok(await _orderService.GetMyOrdersAsync(UserId()));
 
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id)
@@ -39,32 +44,43 @@ public class OrdersController : ControllerBase
             ? Ok(new { message = "Đã hủy đơn" })
             : BadRequest(new { message = "Không thể hủy đơn" });
 
-    [HttpGet("admin/all")]
+    [HttpGet("all")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> All() => Ok(await _orderService.GetAllOrdersAsync());
 
-    [HttpGet("admin/status/{status}")]
+    [HttpPost("{id}/confirm-payment")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> ByStatus(string status) => Ok(await _orderService.GetOrdersByStatusAsync(status));
+    public async Task<IActionResult> ConfirmPayment(string id)
+        => await _orderService.ConfirmPaymentAsync(id)
+            ? Ok(new { message = "Đã xác nhận thanh toán" })
+            : BadRequest(new { message = "Không thể xác nhận" });
 
-    [HttpPut("admin/{id}/status")]
+    [HttpPatch("{id}/status")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> UpdateStatus(string id, [FromBody] string status)
-        => await _orderService.UpdateOrderStatusAsync(id, status) ? NoContent() : NotFound();
+    public async Task<IActionResult> Status(string id, [FromBody] string status)
+        => await _orderService.UpdateOrderStatusAsync(id, status)
+            ? Ok(new { message = "Đã cập nhật" })
+            : NotFound();
 
-    [HttpPost("{id}/claim")]
-    [Authorize(Roles = "Shipper")]
-    public async Task<IActionResult> Claim(string id)
-        => await _orderService.ClaimOrderAsync(id, UserId())
-            ? Ok(new { message = "Đã nhận đơn" })
-            : BadRequest(new { message = "Đơn không còn khả dụng" });
+    [HttpGet("shipper/available")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> Available() => Ok(await _orderService.GetOrdersByStatusAsync("Ready"));
 
     [HttpGet("shipper/mine")]
-    [Authorize(Roles = "Shipper")]
+    [Authorize(Roles = "Shipper,Admin")]
     public async Task<IActionResult> ShipperMine() => Ok(await _orderService.GetShipperOrdersAsync(UserId()));
 
-    [HttpPut("shipper/{id}/delivery")]
-    [Authorize(Roles = "Shipper")]
+    [HttpPost("{id}/claim")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> Claim(string id)
+        => await _orderService.ClaimOrderAsync(id, UserId())
+            ? Ok(new { message = "Đã nhận đơn." })
+            : BadRequest(new { message = "Không nhận được đơn (đã có shipper khác nhận)." });
+
+    [HttpPost("{id}/delivery-status")]
+    [Authorize(Roles = "Shipper,Admin")]
     public async Task<IActionResult> Delivery(string id, [FromBody] string status)
-        => await _orderService.UpdateDeliveryStatusAsync(id, UserId(), status) ? NoContent() : BadRequest();
+        => await _orderService.UpdateDeliveryStatusAsync(id, UserId(), status)
+            ? Ok(new { message = "Đã cập nhật" })
+            : BadRequest(new { message = "Cập nhật thất bại" });
 }

@@ -22,10 +22,13 @@ builder.Services.AddSingleton<OrderDbContext>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddRabbitMqEventBus(busSettings);
 
+builder.Services.AddHttpContextAccessor();
 var productUrl = builder.Configuration["Services:ProductUrl"] ?? "http://localhost:5002/";
 var paymentUrl = builder.Configuration["Services:PaymentUrl"] ?? "http://localhost:5006/";
+var cartUrl = builder.Configuration["Services:CartUrl"] ?? "http://localhost:5004/";
 builder.Services.AddHttpClient<IProductClient, ProductHttpClient>(c => { c.BaseAddress = new Uri(productUrl); c.Timeout = TimeSpan.FromSeconds(5); });
 builder.Services.AddHttpClient<IPaymentClient, PaymentHttpClient>(c => { c.BaseAddress = new Uri(paymentUrl); c.Timeout = TimeSpan.FromSeconds(10); });
+builder.Services.AddHttpClient<ICartClient, CartHttpClient>(c => { c.BaseAddress = new Uri(cartUrl); c.Timeout = TimeSpan.FromSeconds(5); });
 
 // Consumer: PaymentSucceeded -> ConfirmPayment
 builder.Services.AddRabbitMqConsumer<PaymentSucceededEvent>("order.payment-succeeded", async (sp, evt) =>

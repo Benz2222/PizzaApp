@@ -86,11 +86,13 @@ services:
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__ProductUrl=http://product:8080/
       - Services__PaymentUrl=http://payment:8080/
+      - Services__CartUrl=http://cart:8080/
       - EventBus__HostName=rabbitmq
     depends_on:
       - mongo
       - product
       - payment
+      - cart
       - rabbitmq
 
   gateway:
