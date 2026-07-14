@@ -1,7 +1,8 @@
-using PizzaApp.Cart.Core.Interfaces;
-using PizzaApp.Cart.Infrastructure;
-using PizzaApp.Cart.Infrastructure.Clients;
-using PizzaApp.Cart.Infrastructure.Services;
+using PizzaApp.Payment.Core;
+using PizzaApp.Payment.Core.Interfaces;
+using PizzaApp.Payment.Infrastructure;
+using PizzaApp.Payment.Infrastructure.Gateways;
+using PizzaApp.Payment.Infrastructure.Services;
 using PizzaApp.BuildingBlocks.Auth;
 using PizzaApp.BuildingBlocks.Mongo;
 using PizzaApp.BuildingBlocks.Messaging;
@@ -14,27 +15,17 @@ var jwtSettings = new JwtSettings();
 builder.Configuration.GetSection("JwtSettings").Bind(jwtSettings);
 var busSettings = new EventBusSettings();
 builder.Configuration.GetSection("EventBus").Bind(busSettings);
+var paymentSettings = new PaymentSettings();
+builder.Configuration.GetSection("Payment").Bind(paymentSettings);
 
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton(jwtSettings);
+builder.Services.AddSingleton(paymentSettings);
 builder.Services.AddSingleton<MongoContext>();
-builder.Services.AddSingleton<CartDbContext>();
-builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddSingleton<PaymentDbContext>();
+builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddRabbitMqEventBus(busSettings);
-
-// Consumer: OrderCreated -> xóa giỏ của user
-builder.Services.AddRabbitMqConsumer<OrderCreatedEvent>("cart.order-created", async (sp, evt) =>
-{
-    var svc = sp.GetRequiredService<ICartService>();
-    await svc.ClearCartAsync(evt.UserId);
-});
-
-var productUrl = builder.Configuration["Services:ProductUrl"] ?? "http://localhost:5002/";
-builder.Services.AddHttpClient<IProductClient, ProductHttpClient>(c =>
-{
-    c.BaseAddress = new Uri(productUrl);
-    c.Timeout = TimeSpan.FromSeconds(5);
-});
 
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
