@@ -23,6 +23,30 @@ services:
     depends_on:
       - mongo
 
+  category:
+    build:
+      context: .
+      dockerfile: src/Services/Category/PizzaApp.Category.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Category
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on:
+      - mongo
+
+  product:
+    build:
+      context: .
+      dockerfile: src/Services/Product/PizzaApp.Product.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Product
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__CategoryUrl=http://category:8080/
+    depends_on:
+      - mongo
+      - category
+
   gateway:
     build:
       context: .
@@ -32,8 +56,12 @@ services:
     environment:
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
+      - ReverseProxy__Clusters__category-cluster__Destinations__category-1__Address=http://category:8080/
+      - ReverseProxy__Clusters__product-cluster__Destinations__product-1__Address=http://product:8080/
     depends_on:
       - auth
+      - category
+      - product
 
 volumes:
   mongo-data:
