@@ -12,14 +12,28 @@ public class OrderService : IOrderService
     private readonly IMongoCollection<OrderEntity> _orders;
     private readonly IProductClient _productClient;
     private readonly IPaymentClient _paymentClient;
+    private readonly ICartClient _cartClient;
     private readonly IEventBus _bus;
 
-    public OrderService(OrderDbContext db, IProductClient productClient, IPaymentClient paymentClient, IEventBus bus)
+    public OrderService(OrderDbContext db, IProductClient productClient, IPaymentClient paymentClient, ICartClient cartClient, IEventBus bus)
     {
         _orders = db.Orders;
         _productClient = productClient;
         _paymentClient = paymentClient;
+        _cartClient = cartClient;
         _bus = bus;
+    }
+
+    public async Task<OrderResultDto> CheckoutFromCartAsync(string userId, string deliveryAddress)
+    {
+        var cart = await _cartClient.GetCartAsync();
+        if (cart.Count == 0) throw new InvalidOperationException("Giỏ hàng của bạn đang trống.");
+        var dto = new CreateOrderDto
+        {
+            DeliveryAddress = deliveryAddress,
+            Items = cart.Select(c => new OrderItemDto { ProductId = c.ProductId, Quantity = c.Quantity, Size = c.Size }).ToList()
+        };
+        return await CreateOrderAsync(userId, dto);
     }
 
     public async Task<OrderResultDto> CreateOrderAsync(string userId, CreateOrderDto dto)
