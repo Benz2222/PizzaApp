@@ -47,6 +47,19 @@ services:
       - mongo
       - category
 
+  cart:
+    build:
+      context: .
+      dockerfile: src/Services/Cart/PizzaApp.Cart.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Cart
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__ProductUrl=http://product:8080/
+    depends_on:
+      - mongo
+      - product
+
   gateway:
     build:
       context: .
@@ -58,10 +71,12 @@ services:
       - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
       - ReverseProxy__Clusters__category-cluster__Destinations__category-1__Address=http://category:8080/
       - ReverseProxy__Clusters__product-cluster__Destinations__product-1__Address=http://product:8080/
+      - ReverseProxy__Clusters__cart-cluster__Destinations__cart-1__Address=http://cart:8080/
     depends_on:
       - auth
       - category
       - product
+      - cart
 
 volumes:
   mongo-data:
