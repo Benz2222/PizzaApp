@@ -1,0 +1,15 @@
+namespace PizzaApp.Auth.Core.Entities;
+
+public class User
+{
+    public string Id { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public string Role { get; set; } = "Customer"; // Customer, Admin, Shipper
+    public string? ResetPasswordToken { get; set; }
+    public DateTime? ResetPasswordTokenExpiry { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

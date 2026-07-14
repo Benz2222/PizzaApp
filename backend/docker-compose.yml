@@ -1,0 +1,39 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  auth:
+    build:
+      context: .
+      dockerfile: src/Services/Auth/PizzaApp.Auth.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Auth
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on:
+      - mongo
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/ApiGateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
+    depends_on:
+      - auth
+
+volumes:
+  mongo-data:
