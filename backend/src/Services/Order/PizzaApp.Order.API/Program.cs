@@ -1,7 +1,7 @@
-using PizzaApp.Cart.Core.Interfaces;
-using PizzaApp.Cart.Infrastructure;
-using PizzaApp.Cart.Infrastructure.Clients;
-using PizzaApp.Cart.Infrastructure.Services;
+using PizzaApp.Order.Core.Interfaces;
+using PizzaApp.Order.Infrastructure;
+using PizzaApp.Order.Infrastructure.Clients;
+using PizzaApp.Order.Infrastructure.Services;
 using PizzaApp.BuildingBlocks.Auth;
 using PizzaApp.BuildingBlocks.Mongo;
 using PizzaApp.BuildingBlocks.Messaging;
@@ -18,22 +18,20 @@ builder.Configuration.GetSection("EventBus").Bind(busSettings);
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddSingleton<MongoContext>();
-builder.Services.AddSingleton<CartDbContext>();
-builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddSingleton<OrderDbContext>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddRabbitMqEventBus(busSettings);
 
-// Consumer: OrderCreated -> xóa giỏ của user
-builder.Services.AddRabbitMqConsumer<OrderCreatedEvent>("cart.order-created", async (sp, evt) =>
-{
-    var svc = sp.GetRequiredService<ICartService>();
-    await svc.ClearCartAsync(evt.UserId);
-});
-
 var productUrl = builder.Configuration["Services:ProductUrl"] ?? "http://localhost:5002/";
-builder.Services.AddHttpClient<IProductClient, ProductHttpClient>(c =>
+var paymentUrl = builder.Configuration["Services:PaymentUrl"] ?? "http://localhost:5006/";
+builder.Services.AddHttpClient<IProductClient, ProductHttpClient>(c => { c.BaseAddress = new Uri(productUrl); c.Timeout = TimeSpan.FromSeconds(5); });
+builder.Services.AddHttpClient<IPaymentClient, PaymentHttpClient>(c => { c.BaseAddress = new Uri(paymentUrl); c.Timeout = TimeSpan.FromSeconds(10); });
+
+// Consumer: PaymentSucceeded -> ConfirmPayment
+builder.Services.AddRabbitMqConsumer<PaymentSucceededEvent>("order.payment-succeeded", async (sp, evt) =>
 {
-    c.BaseAddress = new Uri(productUrl);
-    c.Timeout = TimeSpan.FromSeconds(5);
+    var svc = sp.GetRequiredService<IOrderService>();
+    await svc.ConfirmPaymentAsync(evt.OrderId);
 });
 
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
