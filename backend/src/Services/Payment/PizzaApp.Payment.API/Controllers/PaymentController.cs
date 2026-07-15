@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Net.payOS;
+using Net.payOS.Types;
 using PizzaApp.Payment.Core.DTOs;
 using PizzaApp.Payment.Core.Interfaces;
 
@@ -9,7 +11,32 @@ namespace PizzaApp.Payment.API.Controllers;
 public class PaymentController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
-    public PaymentController(IPaymentService paymentService) => _paymentService = paymentService;
+    private readonly PayOS? _payOS;
+    public PaymentController(IPaymentService paymentService, PayOS? payOS = null)
+    {
+        _paymentService = paymentService;
+        _payOS = payOS;
+    }
+
+    /// <summary>PayOS gọi vào đây khi khách chuyển khoản thành công (cần URL public: ngrok/VPS).</summary>
+    [HttpPost("webhook")]
+    public async Task<IActionResult> Webhook([FromBody] WebhookType body)
+    {
+        try
+        {
+            if (_payOS == null) return Ok(new { message = "PayOS chưa bật" });
+            // Xác thực chữ ký để chắc chắn request đến từ PayOS
+            WebhookData data = _payOS.verifyPaymentWebhookData(body);
+            if (body.success)
+                await _paymentService.ConfirmByProviderCodeAsync(data.orderCode);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PAYOS WEBHOOK] {ex.Message}");
+        }
+        // Luôn trả 200 để PayOS không gửi lại liên tục
+        return Ok(new { message = "received" });
+    }
 
     // Gọi nội bộ bởi Order service (REST).
     [HttpPost("create")]
@@ -36,6 +63,10 @@ public class PaymentController : ControllerBase
         var ok = await _paymentService.ConfirmAsync(code);
         return ok ? Ok(new { status = "PAID" }) : NotFound(new { status = "NOT_FOUND" });
     }
+
+    /// <summary>PayOS redirect về đây sau khi trả tiền -> tự nhảy deep link mở lại app.</summary>
+    [HttpGet("return")]
+    public IActionResult Return() => Content(ReturnTemplate, "text/html; charset=utf-8");
 
     [HttpGet("order/{orderId}")]
     public async Task<IActionResult> GetByOrder(string orderId)
@@ -109,6 +140,31 @@ async function pay(){
 }
 function reset(){document.getElementById('pay').disabled=false;document.getElementById('spin').style.display='none';}
 </script></body></html>
+""";
+
+    private const string ReturnTemplate = """
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thanh toán thành công</title>
+<style>
+*{font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#eef1f6;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
+.c{background:#fff;border-radius:20px;padding:36px;text-align:center;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.12)}
+.ic{font-size:56px}
+.t{font-size:20px;font-weight:700;color:#16a34a;margin-top:8px}
+.s{color:#6b7280;margin-top:8px;font-size:14px}
+a{display:block;margin-top:22px;padding:14px;background:#D85A30;color:#fff;text-decoration:none;border-radius:12px;font-weight:700}
+</style></head>
+<body><div class="c">
+<div class="ic">✅</div>
+<div class="t">Thanh toán thành công</div>
+<div class="s">Đang quay lại ứng dụng PizzaApp…</div>
+<a href="pizzaapp://payment-success">Mở lại PizzaApp</a>
+</div>
+<script>
+// Tự mở app qua deep link; nếu trình duyệt chặn thì người dùng bấm nút trên.
+setTimeout(function(){ window.location.href = "pizzaapp://payment-success"; }, 600);
+</script>
+</body></html>
 """;
 
     private const string SuccessTemplate = """

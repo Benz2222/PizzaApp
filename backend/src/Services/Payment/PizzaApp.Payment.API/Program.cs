@@ -23,7 +23,25 @@ builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddSingleton(paymentSettings);
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddSingleton<PaymentDbContext>();
-builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+
+// Chọn cổng thanh toán: "PayOS" = tiền thật, còn lại = Mock (giả lập, demo offline)
+var provider = builder.Configuration["Payment:Provider"] ?? "Mock";
+if (provider.Equals("PayOS", StringComparison.OrdinalIgnoreCase))
+{
+    var payOsSettings = new PaymentSettingsPayOS();
+    builder.Configuration.GetSection("PayOS").Bind(payOsSettings);
+    builder.Services.AddSingleton(payOsSettings);
+    builder.Services.AddSingleton(new Net.payOS.PayOS(
+        payOsSettings.ClientId, payOsSettings.ApiKey, payOsSettings.ChecksumKey));
+    builder.Services.AddSingleton<IPaymentGateway, PayOSPaymentGateway>();
+    Console.WriteLine("[Payment] Dùng PayOS (TIỀN THẬT)");
+}
+else
+{
+    builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+    Console.WriteLine("[Payment] Dùng MockPaymentGateway (giả lập)");
+}
+
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddRabbitMqEventBus(busSettings);
 

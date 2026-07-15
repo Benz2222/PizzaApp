@@ -5,6 +5,7 @@ public class Payment
     public string Id { get; set; } = string.Empty;
     public string OrderId { get; set; } = string.Empty;
     public string PaymentCode { get; set; } = string.Empty; // mã trong URL confirm/QR
+    public long ProviderCode { get; set; }                  // PayOS orderCode (khớp webhook); 0 nếu mock
     public decimal Amount { get; set; }
     public string Status { get; set; } = "PENDING"; // PENDING, PAID
     public string CheckoutUrl { get; set; } = string.Empty;

@@ -72,6 +72,12 @@ services:
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - EventBus__HostName=rabbitmq
       - Payment__PublicBaseUrl=${PUBLIC_BASE_URL}
+      - Payment__Provider=${PAYMENT_PROVIDER:-PayOS}
+      - PayOS__ClientId=${PAYOS_CLIENT_ID:-}
+      - PayOS__ApiKey=${PAYOS_API_KEY:-}
+      - PayOS__ChecksumKey=${PAYOS_CHECKSUM_KEY:-}
+      - PayOS__ReturnUrl=${PAYOS_RETURN_URL:-https://example.com/success}
+      - PayOS__CancelUrl=${PAYOS_CANCEL_URL:-https://example.com/cancel}
     depends_on:
       - mongo
       - rabbitmq
