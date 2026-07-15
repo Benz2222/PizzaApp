@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/order_service.dart';
@@ -8,10 +10,12 @@ import 'orders_screen.dart';
 class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
   final String paymentUrl;
+  final String paymentQr; // data:image/png;base64,...
   const OrderSuccessScreen({
     super.key,
     required this.orderId,
     this.paymentUrl = '',
+    this.paymentQr = '',
   });
 
   @override
@@ -63,6 +67,43 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     final id = widget.orderId;
     if (id.length <= 6) return id.toUpperCase();
     return id.substring(id.length - 6).toUpperCase();
+  }
+
+  /// Giải mã data URI "data:image/png;base64,xxx" thành bytes để hiển thị.
+  Uint8List? get _qrBytes {
+    final raw = widget.paymentQr;
+    if (raw.isEmpty || !raw.contains(',')) return null;
+    try {
+      return base64Decode(raw.split(',').last);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildQrCard() {
+    final bytes = _qrBytes;
+    if (bytes == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD3D1C7), width: 0.5),
+      ),
+      child: Column(
+        children: [
+          const Text('Quét mã để thanh toán',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 4),
+          const Text('Mở app ngân hàng và quét mã QR bên dưới',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 12),
+          Image.memory(bytes, width: 220, height: 220, fit: BoxFit.contain,
+              gaplessPlayback: true),
+        ],
+      ),
+    );
   }
 
   @override
@@ -118,6 +159,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
               const SizedBox(height: 24),
               _buildTracker(),
               const SizedBox(height: 24),
+              // Chưa trả tiền -> hiện QR để quét
+              if (!_paid) ...[
+                _buildQrCard(),
+                const SizedBox(height: 16),
+              ],
               // Chưa trả tiền -> nút mở lại link + báo đang chờ
               if (!_paid && widget.paymentUrl.isNotEmpty) ...[
                 SizedBox(
@@ -126,8 +172,8 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                   child: ElevatedButton.icon(
                     onPressed: () => launchUrl(Uri.parse(widget.paymentUrl),
                         mode: LaunchMode.externalApplication),
-                    icon: const Icon(Icons.qr_code, color: Colors.white),
-                    label: const Text('MỞ LẠI LINK THANH TOÁN',
+                    icon: const Icon(Icons.open_in_new, color: Colors.white),
+                    label: const Text('MỞ TRANG THANH TOÁN',
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,

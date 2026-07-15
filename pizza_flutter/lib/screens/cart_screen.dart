@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart';
 import '../widgets/product_image.dart';
@@ -29,12 +28,8 @@ class _CartScreenState extends State<CartScreen> {
       );
       cart.clear();
 
-      // Mở link thanh toán PayOS (nếu có)
-      if (result.checkoutUrl.isNotEmpty) {
-        final uri = Uri.parse(result.checkoutUrl);
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-
+      // Không tự mở trình duyệt nữa — hiện QR ngay trong app,
+      // người dùng quét bằng app ngân hàng hoặc bấm nút mở trang thanh toán.
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -42,6 +37,7 @@ class _CartScreenState extends State<CartScreen> {
             builder: (_) => OrderSuccessScreen(
               orderId: result.orderId,
               paymentUrl: result.checkoutUrl,
+              paymentQr: result.qrCode,
             ),
           ),
           (route) => route.isFirst,

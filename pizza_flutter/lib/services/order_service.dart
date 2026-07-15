@@ -8,7 +8,12 @@ import 'auth_service.dart';
 class CheckoutResult {
   final String orderId;
   final String checkoutUrl;
-  CheckoutResult({required this.orderId, required this.checkoutUrl});
+  final String qrCode; // ảnh QR dạng data URI (data:image/png;base64,...)
+  CheckoutResult({
+    required this.orderId,
+    required this.checkoutUrl,
+    this.qrCode = '',
+  });
 }
 
 class OrderService {
@@ -55,6 +60,7 @@ class OrderService {
       return CheckoutResult(
         orderId: data['orderId']?.toString() ?? '',
         checkoutUrl: data['checkoutUrl']?.toString() ?? '',
+        qrCode: data['qrCode']?.toString() ?? '',
       );
     }
 
