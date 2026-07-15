@@ -26,12 +26,15 @@ public class PaymentService : IPaymentService
     {
         var code = Guid.NewGuid().ToString("N");
         var confirmUrl = $"{_settings.PublicBaseUrl.TrimEnd('/')}/api/payment/confirm/{code}";
-        var creation = _gateway.CreateQr(code, dto.Amount, confirmUrl);
+        var items = dto.Items.Select(i => new GatewayItem(i.Name, i.Quantity, i.Price)).ToList();
+
+        var creation = await _gateway.CreateAsync(code, dto.Amount, items, confirmUrl);
 
         var payment = new PaymentEntity
         {
             OrderId = dto.OrderId,
             PaymentCode = code,
+            ProviderCode = creation.ProviderCode,
             Amount = dto.Amount,
             Status = "PENDING",
             CheckoutUrl = creation.CheckoutUrl,
@@ -50,6 +53,18 @@ public class PaymentService : IPaymentService
     public async Task<bool> ConfirmAsync(string paymentCode)
     {
         var payment = await _payments.Find(p => p.PaymentCode == paymentCode).FirstOrDefaultAsync();
+        return await MarkPaidAsync(payment);
+    }
+
+    /// <summary>PayOS webhook báo đã trả tiền -> khớp theo orderCode.</summary>
+    public async Task<bool> ConfirmByProviderCodeAsync(long providerCode)
+    {
+        var payment = await _payments.Find(p => p.ProviderCode == providerCode).FirstOrDefaultAsync();
+        return await MarkPaidAsync(payment);
+    }
+
+    private async Task<bool> MarkPaidAsync(PaymentEntity? payment)
+    {
         if (payment == null) return false;
         if (payment.Status == "PAID") return true; // idempotent
 
