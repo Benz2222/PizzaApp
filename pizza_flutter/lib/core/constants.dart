@@ -5,8 +5,9 @@ class AppConstants {
   // - Web (Chrome/Edge/Windows): localhost
   // - Android Emulator: 10.0.2.2 (= localhost của máy tính)
   // Thiết bị thật: đổi thành IP LAN của máy, VD: http://192.168.1.5:5211/api
+  // Cổng 8090 (không dùng 8080 vì hay bị Apache/PEM, XAMPP... giành mất).
   static String get baseUrl =>
-      kIsWeb ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+      kIsWeb ? 'http://localhost:8090/api' : 'http://10.0.2.2:8090/api';
 
   // Host phục vụ ảnh (bỏ phần /api)
   static String get imageHost => baseUrl.replaceAll('/api', '');

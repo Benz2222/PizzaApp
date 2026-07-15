@@ -106,7 +106,8 @@ services:
       context: .
       dockerfile: src/ApiGateway/Dockerfile
     ports:
-      - "8080:8080"
+      # 8090 tren may (8080 hay bi Apache/PEM, XAMPP... gianh) -> 8080 trong container
+      - "8090:8080"
     environment:
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/

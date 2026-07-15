@@ -58,4 +58,36 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Tự đăng ký webhook với PayOS sau khi server đã lắng nghe.
+// PayOS sẽ gọi thử URL này -> phải public (ngrok/VPS) và trả 200.
+if (provider.Equals("PayOS", StringComparison.OrdinalIgnoreCase))
+{
+    app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () =>
+    {
+        var hookUrl = $"{paymentSettings.PublicBaseUrl.TrimEnd('/')}/api/payment/webhook";
+        if (hookUrl.StartsWith("http://localhost") || hookUrl.StartsWith("http://10.0.2.2"))
+        {
+            Console.WriteLine($"[Payment] Bỏ qua đăng ký webhook: '{hookUrl}' không public. Cần ngrok/VPS.");
+            return;
+        }
+        var payOs = app.Services.GetRequiredService<Net.payOS.PayOS>();
+        for (var i = 1; i <= 3; i++)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3)); // chờ server sẵn sàng nhận probe
+                await payOs.confirmWebhook(hookUrl);
+                Console.WriteLine($"[Payment] Đã đăng ký webhook PayOS: {hookUrl}");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Payment] Đăng ký webhook lỗi (lần {i}/3): {ex.Message}");
+            }
+        }
+        Console.WriteLine("[Payment] KHÔNG đăng ký được webhook -> phải khai tay tại my.payos.vn");
+    }));
+}
+
 app.Run();

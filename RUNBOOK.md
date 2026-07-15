@@ -35,10 +35,10 @@ docker compose up -d
 Sửa `D:\PizzaApp\backend\.env`:
 ```env
 PAYMENT_PROVIDER=Mock
-PUBLIC_BASE_URL=http://10.0.2.2:8080
+PUBLIC_BASE_URL=http://10.0.2.2:8090
 ```
 > `10.0.2.2` = địa chỉ máy host nhìn từ Android emulator. **Không dùng `localhost`** (emulator hiểu localhost là chính nó).
-> Nếu demo trên **điện thoại thật**: dùng IP LAN, vd `http://192.168.1.132:8080`.
+> Nếu demo trên **điện thoại thật**: dùng IP LAN, vd `http://192.168.1.132:8090`.
 
 **Không cần ngrok.** Bỏ qua bước 3, sang bước 4.
 
@@ -51,33 +51,44 @@ PAYMENT_PROVIDER=PayOS
 
 ## Bước 3. ngrok (CHỈ khi dùng PayOS)
 
+**3a. Mở tunnel** — cửa sổ PowerShell riêng, **giữ mở suốt buổi demo**:
 ```powershell
-ngrok http 8080
-```
-Giữ cửa sổ này mở. Nó hiện dòng:
-```
-Forwarding   https://xxxx-yyyy.ngrok-free.dev -> http://localhost:8080
+ngrok http 8090
 ```
 
-**Lấy URL nhanh** (cửa sổ khác):
+**3b. Cập nhật cấu hình — CHẠY SCRIPT, KHÔNG SỬA TAY**
+
+Cửa sổ PowerShell khác:
 ```powershell
-curl http://127.0.0.1:4040/api/tunnels
+cd D:\PizzaApp\backend
+.\update-ngrok.ps1
 ```
 
-**Cập nhật 3 biến trong `.env`** (thay `<NGROK_URL>` bằng URL vừa lấy):
-```env
-PUBLIC_BASE_URL=<NGROK_URL>
-PAYOS_RETURN_URL=<NGROK_URL>/api/payment/return
-PAYOS_CANCEL_URL=<NGROK_URL>/api/payment/return
+Script tự làm **hết**, bạn không phải động vào gì:
+1. Lấy URL ngrok hiện tại
+2. Ghi vào `.env` 3 biến: `PUBLIC_BASE_URL`, `PAYOS_RETURN_URL`, `PAYOS_CANCEL_URL`
+3. Restart service `payment`
+4. Payment service **tự gọi API PayOS đăng ký webhook** (`payOS.confirmWebhook`)
+5. Script chờ và báo `XONG! Webhook da tu dong dang ky voi PayOS.`
+
+✅ **KHÔNG cần vào my.payos.vn.** Thấy dòng "XONG!" là dùng được ngay.
+
+> Nếu báo `cannot be loaded because running scripts is disabled`, chạy:
+> `powershell -ExecutionPolicy Bypass -File .\update-ngrok.ps1`
+
+> ⚠️ **ngrok free đổi URL mỗi lần chạy lại** → mỗi lần mở ngrok mới, chỉ cần chạy lại `.\update-ngrok.ps1`.
+
+**Nếu script báo đăng ký webhook THẤT BẠI** → mới phải khai tay tại **my.payos.vn → Webhook**, dán URL script in ra. Xem lý do:
+```powershell
+docker logs backend-payment-1 | findstr Payment
 ```
 
-**Khai webhook trong PayOS**: vào **https://my.payos.vn** → chọn kênh thanh toán → mục **Webhook** → dán:
-```
-<NGROK_URL>/api/payment/webhook
-```
-→ bấm **Kiểm tra/Lưu**, phải báo thành công.
-
-> ⚠️ ngrok free **đổi URL mỗi lần chạy lại** → mỗi lần phải cập nhật `.env` + khai lại webhook.
+### 3 biến đó để làm gì?
+| Biến | Ý nghĩa |
+|---|---|
+| `PUBLIC_BASE_URL` | Địa chỉ công khai của hệ thống (thay cho localhost) |
+| `PAYOS_RETURN_URL` | Trả tiền xong PayOS đưa người dùng về đây → trang này tự mở lại app qua deep link |
+| `PAYOS_CANCEL_URL` | Nơi quay về khi bấm huỷ thanh toán |
 
 ## Bước 4. Backend (9 container)
 
@@ -89,7 +100,7 @@ docker compose up -d
 **Kiểm tra**:
 ```powershell
 docker compose ps                                  # phải thấy 9 container "Up"
-curl http://localhost:8080/api/category            # phải trả JSON danh mục
+curl http://localhost:8090/api/category            # phải trả JSON danh mục
 docker logs backend-payment-1 | Select-String "Payment]"   # xác nhận Mock hay PayOS
 ```
 > Nếu đổi `.env` khi container đang chạy → phải `docker compose up -d payment` để nạp lại biến.
@@ -182,11 +193,55 @@ docker compose start    # chạy lại
 | `Lost connection to device` | **Hết RAM** (Gradle daemon ăn ~900MB) | `taskkill /F /IM java.exe`, mở app bằng `adb monkey` thay vì `flutter run` |
 | Emulator lag/đứng kinh khủng | Dùng `-gpu swiftshader_indirect` (CPU) hoặc hết RAM | Dùng `-gpu host`; đóng Edge/Zalo |
 | Docker tự tắt | RAM căng khi chạy cùng emulator | Đã cap WSL2 = 2GB ở `C:\Users\tamtr\.wslconfig`. Đóng bớt app. |
-| App không thấy sản phẩm | Backend chưa lên / sai baseUrl | `docker compose ps`; `curl http://localhost:8080/api/category` |
-| Trang thanh toán `ERR_CONNECTION_REFUSED` | `PUBLIC_BASE_URL` sai với thiết bị | Emulator → `http://10.0.2.2:8080`; điện thoại thật → IP LAN |
+| App không thấy sản phẩm | Backend chưa lên / sai baseUrl | `docker compose ps`; `curl http://localhost:8090/api/category` |
+| Trang thanh toán `ERR_CONNECTION_REFUSED` | `PUBLIC_BASE_URL` sai với thiết bị | Emulator → `http://10.0.2.2:8090`; điện thoại thật → IP LAN |
 | Trả tiền xong đơn không chuyển "Đã thanh toán" | Webhook PayOS chưa khai / ngrok tắt / URL đổi | Bật ngrok, cập nhật `.env`, khai lại webhook trong my.payos.vn |
 | Đơn cũ mở link lỗi | Đơn lưu URL cũ trước khi đổi `.env` | Đặt **đơn mới** |
 | `invalid command-line parameter` khi mở emulator | Dán dính chữ thừa vào lệnh | Copy đúng dòng lệnh, không kèm text |
+| **App báo sai mật khẩu / "Đăng ký thất bại" dù backend OK** | **Phần mềm khác giành cổng** (xem mục dưới) | Kiểm tra ai chiếm cổng, đổi cổng hoặc tắt nó |
+
+## 🔌 Xung đột cổng — bug từng gặp, RẤT khó phát hiện
+
+**Triệu chứng:** `curl localhost` chạy ngon, nhưng app/điện thoại gọi vào thì lỗi lạ.
+
+**Nguyên nhân thật:** 2 chương trình cùng bind 1 cổng nhưng **khác họ địa chỉ** → Windows KHÔNG báo lỗi:
+```
+::       :8080  ← Docker    (IPv6)   -> curl localhost trúng cái này  ✅
+0.0.0.0  :8080  ← Apache    (IPv4)   -> app/emulator trúng cái này    ❌
+```
+Thủ phạm từng gặp: service **`PEMHTTPD-x64`** (Apache của EDB Postgres Enterprise Manager, cài kèm PostgreSQL, tự bật cùng Windows).
+
+**Vì vậy dự án này dùng cổng `8090`, không dùng 8080.**
+
+### Lệnh xem ai chiếm cổng
+```powershell
+# Xem ai LISTEN cổng (dễ đọc nhất)
+Get-NetTCPConnection -LocalPort 8090 -State Listen |
+  Select-Object LocalAddress, LocalPort, OwningProcess,
+    @{N='Process';E={(Get-Process -Id $_.OwningProcess).ProcessName}}
+
+# Cách cũ
+netstat -ano | findstr :8090      # cột cuối = PID
+tasklist /FI "PID eq 1234"        # PID đó là app gì
+
+# Kill
+taskkill /F /PID 1234
+taskkill /F /IM httpd.exe
+```
+
+### Nếu là Windows Service (kill xong tự sống lại)
+```powershell
+Get-CimInstance Win32_Service | Where-Object { $_.ProcessId -eq 1234 } | Select Name, PathName
+Stop-Service TEN_SERVICE
+Set-Service TEN_SERVICE -StartupType Manual   # cấm tự bật cùng Windows
+```
+
+### Kiểm tra đúng cách (phải test bằng IPv4, KHÔNG chỉ localhost)
+```powershell
+curl http://localhost:8090/api/category         # IPv6 - có thể lừa bạn
+curl http://192.168.1.132:8090/api/category     # IPv4 - đường app THẬT SỰ đi
+```
+Xem header `Server:` → phải là **Kestrel** (của mình). Nếu ra **Apache/nginx** ⇒ bị giành cổng.
 
 ---
 
@@ -205,11 +260,11 @@ PAYOS_CANCEL_URL=...
 ```
 
 **baseUrl của app** (`pizza_flutter/lib/core/constants.dart`):
-- Emulator: `http://10.0.2.2:8080/api`
-- Web: `http://localhost:8080/api`
-- Điện thoại thật: `http://<IP-LAN>:8080/api` (vd `192.168.1.132`)
+- Emulator: `http://10.0.2.2:8090/api`
+- Web: `http://localhost:8090/api`
+- Điện thoại thật: `http://<IP-LAN>:8090/api` (vd `192.168.1.132`)
 
-**Cổng dịch vụ**: Gateway `8080` (công khai) · Mongo `27017` · RabbitMQ `5672`, UI quản trị `15672`
+**Cổng dịch vụ**: Gateway `8090` (công khai) · Mongo `27017` · RabbitMQ `5672`, UI quản trị `15672`
 Các microservice (auth/category/product/cart/order/payment) **không expose ra ngoài** — chỉ gọi qua Gateway.
 
 **Xem RAM**: Task Manager (`Ctrl+Shift+Esc`) → tab Processes → sort cột Memory. Docker: `docker stats`.
