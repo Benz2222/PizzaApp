@@ -13,7 +13,9 @@ class ProductImage extends StatelessWidget {
     required this.imageUrl,
     required this.emoji,
     this.emojiSize = 48,
-    this.fit = BoxFit.cover,
+    // contain: hiện trọn cả cái pizza. Dùng cover sẽ phóng to cho đầy khung
+    // và cắt mất viền ảnh.
+    this.fit = BoxFit.contain,
   });
 
   @override
