@@ -17,7 +17,7 @@ services:
       context: .
       dockerfile: src/Services/Auth/PizzaApp.Auth.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Auth
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
     depends_on:
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: src/Services/Category/PizzaApp.Category.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Category
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
     depends_on:
@@ -39,7 +39,7 @@ services:
       context: .
       dockerfile: src/Services/Product/PizzaApp.Product.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Product
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__CategoryUrl=http://category:8080/
@@ -52,7 +52,7 @@ services:
       context: .
       dockerfile: src/Services/Cart/PizzaApp.Cart.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Cart
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__ProductUrl=http://product:8080/
@@ -67,7 +67,7 @@ services:
       context: .
       dockerfile: src/Services/Payment/PizzaApp.Payment.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Payment
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - EventBus__HostName=rabbitmq
@@ -87,7 +87,7 @@ services:
       context: .
       dockerfile: src/Services/Order/PizzaApp.Order.API/Dockerfile
     environment:
-      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
       - MongoDB__DatabaseName=PizzaApp_Order
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__ProductUrl=http://product:8080/
