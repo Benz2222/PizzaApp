@@ -92,6 +92,22 @@ services:
       - ReverseProxy__Clusters__payment-cluster__Destinations__payment-1__Address=http://payment:8080/
     depends_on: [auth, category, product, cart, order, payment]
 
+  # Reverse proxy dung truoc gateway: tu xin chung chi Let's Encrypt -> HTTPS.
+  # Can cong 80 (Let's Encrypt xac minh ten mien) va 443 (HTTPS).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # giu chung chi qua cac lan deploy (tranh bi Let's Encrypt chan vi xin lai qua nhieu)
+      - caddy-config:/config
+    depends_on: [gateway]
+
 volumes:
   product-uploads:
+  caddy-data:
+  caddy-config:
 

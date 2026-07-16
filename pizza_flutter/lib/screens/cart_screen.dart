@@ -59,9 +59,8 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
-    final discount = cart.totalPrice * 0.3;
     final shipping = cart.items.isEmpty ? 0.0 : 20000.0;
-    final total = cart.totalPrice - discount + shipping;
+    final total = cart.totalPrice + shipping;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F3),
@@ -94,7 +93,7 @@ class _CartScreenState extends State<CartScreen> {
                 const SizedBox(height: 12),
                 _buildAddressField(),
                 const SizedBox(height: 12),
-                _buildSummary(cart.totalPrice, discount, shipping, total),
+                _buildSummary(cart.totalPrice, shipping, total),
               ],
             ),
           ),
@@ -192,8 +191,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildSummary(double subtotal, double discount,
-      double shipping, double total) {
+  Widget _buildSummary(double subtotal, double shipping, double total) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -204,8 +202,6 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(children: [
         _sumRow('Tạm tính', '${subtotal.toStringAsFixed(0)}đ'),
         _sumRow('Phí giao hàng', '${shipping.toStringAsFixed(0)}đ'),
-        _sumRow('Giảm giá (30%)',
-            '-${discount.toStringAsFixed(0)}đ', green: true),
         const Divider(height: 20),
         _sumRow('Tổng cộng', '${total.toStringAsFixed(0)}đ',
             bold: true, red: true),

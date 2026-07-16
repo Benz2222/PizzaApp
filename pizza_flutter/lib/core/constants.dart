@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class AppConstants {
   // Backend chạy trên server Azure (công khai 24/7) — dùng cho MỌI nền tảng
   // (emulator, web, và cả điện thoại thật).
-  static const String _serverUrl = 'http://20.205.122.230:8090/api';
+  // HTTPS: Caddy trên server tự lo chứng chỉ Let's Encrypt. Dùng tên miền, không
+  // dùng IP — chứng chỉ chỉ hợp lệ với tên miền.
+  static const String _serverUrl =
+      'https://pizzaapp-tam.eastasia.cloudapp.azure.com/api';
 
   // Muốn quay lại chạy backend LOCAL (Docker trên máy) thì đổi _useServer = false.
   static const bool _useServer = true;
