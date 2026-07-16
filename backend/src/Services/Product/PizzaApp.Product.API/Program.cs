@@ -32,6 +32,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
+// Phải tạo wwwroot/uploads TRƯỚC khi Build(): nếu thư mục chưa tồn tại thì
+// WebRootPath = null và UseStaticFiles() sẽ trả 404 cho mọi ảnh.
+Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads"));
+
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();

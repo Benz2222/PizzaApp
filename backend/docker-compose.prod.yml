@@ -31,6 +31,9 @@ services:
       - MongoDB__DatabaseName=PizzaApp_Product
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__CategoryUrl=http://category:8080/
+    # Giữ ảnh đã upload qua các lần deploy (không có volume là mất sạch).
+    volumes:
+      - product-uploads:/app/wwwroot/uploads
     depends_on: [category]
 
   cart:
@@ -88,4 +91,7 @@ services:
       - ReverseProxy__Clusters__order-cluster__Destinations__order-1__Address=http://order:8080/
       - ReverseProxy__Clusters__payment-cluster__Destinations__payment-1__Address=http://payment:8080/
     depends_on: [auth, category, product, cart, order, payment]
+
+volumes:
+  product-uploads:
 
