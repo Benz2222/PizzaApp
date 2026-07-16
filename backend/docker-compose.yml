@@ -43,6 +43,9 @@ services:
       - MongoDB__DatabaseName=PizzaApp_Product
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - Services__CategoryUrl=http://category:8080/
+    # Giữ ảnh đã upload qua các lần rebuild container.
+    volumes:
+      - product-uploads:/app/wwwroot/uploads
     depends_on:
       - mongo
       - category
@@ -126,3 +129,4 @@ services:
 
 volumes:
   mongo-data:
+  product-uploads:
