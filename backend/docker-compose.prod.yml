@@ -1,0 +1,101 @@
+# Dùng trên VPS: kéo image sẵn từ ghcr.io thay vì build tại chỗ.
+# Chạy:  docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+# Cần file .env cùng thư mục (JWT_SECRET_KEY, PUBLIC_BASE_URL, PAYOS_*, IMAGE_PREFIX, TAG)
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+
+  auth:
+    image: ${IMAGE_PREFIX}/auth:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Auth
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on: [mongo]
+
+  category:
+    image: ${IMAGE_PREFIX}/category:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Category
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on: [mongo]
+
+  product:
+    image: ${IMAGE_PREFIX}/product:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Product
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__CategoryUrl=http://category:8080/
+    depends_on: [mongo, category]
+
+  cart:
+    image: ${IMAGE_PREFIX}/cart:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Cart
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__ProductUrl=http://product:8080/
+      - EventBus__HostName=rabbitmq
+    depends_on: [mongo, product, rabbitmq]
+
+  payment:
+    image: ${IMAGE_PREFIX}/payment:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Payment
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - EventBus__HostName=rabbitmq
+      - Payment__PublicBaseUrl=${PUBLIC_BASE_URL}
+      - Payment__Provider=${PAYMENT_PROVIDER:-PayOS}
+      - PayOS__ClientId=${PAYOS_CLIENT_ID:-}
+      - PayOS__ApiKey=${PAYOS_API_KEY:-}
+      - PayOS__ChecksumKey=${PAYOS_CHECKSUM_KEY:-}
+      - PayOS__ReturnUrl=${PAYOS_RETURN_URL:-}
+      - PayOS__CancelUrl=${PAYOS_CANCEL_URL:-}
+    depends_on: [mongo, rabbitmq]
+
+  order:
+    image: ${IMAGE_PREFIX}/order:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - MongoDB__ConnectionString=mongodb://mongo:27017
+      - MongoDB__DatabaseName=PizzaApp_Order
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__ProductUrl=http://product:8080/
+      - Services__PaymentUrl=http://payment:8080/
+      - Services__CartUrl=http://cart:8080/
+      - EventBus__HostName=rabbitmq
+    depends_on: [mongo, product, payment, cart, rabbitmq]
+
+  gateway:
+    image: ${IMAGE_PREFIX}/gateway:${TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
+      - ReverseProxy__Clusters__category-cluster__Destinations__category-1__Address=http://category:8080/
+      - ReverseProxy__Clusters__product-cluster__Destinations__product-1__Address=http://product:8080/
+      - ReverseProxy__Clusters__cart-cluster__Destinations__cart-1__Address=http://cart:8080/
+      - ReverseProxy__Clusters__order-cluster__Destinations__order-1__Address=http://order:8080/
+      - ReverseProxy__Clusters__payment-cluster__Destinations__payment-1__Address=http://payment:8080/
+    depends_on: [auth, category, product, cart, order, payment]
+
+volumes:
+  mongo-data:

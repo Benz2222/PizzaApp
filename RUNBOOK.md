@@ -103,7 +103,33 @@ docker compose ps                                  # phải thấy 9 container "
 curl http://localhost:8090/api/category            # phải trả JSON danh mục
 docker logs backend-payment-1 | Select-String "Payment]"   # xác nhận Mock hay PayOS
 ```
-> Nếu đổi `.env` khi container đang chạy → phải `docker compose up -d payment` để nạp lại biến.
+
+### Có bắt buộc chạy `docker compose up -d` không?
+**Tuỳ cách tắt lần trước:**
+
+| Lần trước tắt bằng | Mở Docker Desktop lên | Cần `up -d`? |
+|---|---|---|
+| `docker compose down` | Container bị **xoá** | ✅ **Bắt buộc** |
+| `docker compose stop` | Container **đang dừng** | ✅ Cần |
+| Chỉ Quit Docker Desktop | Docker **tự khôi phục** container | ❌ Không cần |
+
+👉 **Cứ chạy `docker compose up -d` mỗi lần cho chắc** — lệnh này idempotent, đang chạy rồi thì nó chỉ in `Running` chứ không phá gì.
+
+⚠️ **BẮT BUỘC chạy `up -d` sau khi sửa `.env` hoặc `docker-compose.yml`** — không chạy thì container vẫn dùng cấu hình cũ.
+> Sửa mỗi biến của payment → `docker compose up -d payment` là đủ.
+
+### ⚠️ BẪY LỚN: sửa code C# thì phải thêm `--build`
+```powershell
+docker compose up -d --build          # sau khi SỬA CODE backend
+docker compose up -d --build payment  # chỉ build lại 1 service
+```
+Sửa code C# mà chỉ chạy `up -d` → Docker thấy container đang chạy → **không làm gì** → **code mới KHÔNG được áp dụng**, ngồi thắc mắc "sao sửa rồi mà không đổi".
+
+| Sửa gì | Lệnh |
+|---|---|
+| `.env` / `docker-compose.yml` | `docker compose up -d` |
+| **Code C# backend** | `docker compose up -d --build` |
+| Code Flutter | `flutter run --no-enable-impeller` (build lại APK) |
 
 ## Bước 5. Emulator
 
@@ -242,6 +268,47 @@ curl http://localhost:8090/api/category         # IPv6 - có thể lừa bạn
 curl http://192.168.1.132:8090/api/category     # IPv4 - đường app THẬT SỰ đi
 ```
 Xem header `Server:` → phải là **Kestrel** (của mình). Nếu ra **Apache/nginx** ⇒ bị giành cổng.
+
+---
+
+# 🚀 CI/CD (GitHub Actions)
+
+File: `.github/workflows/ci-cd.yml` — chạy khi push lên `main` / `tam-mircoservice`.
+
+| Job | Khi nào chạy | Làm gì |
+|---|---|---|
+| **build-test** | Mọi push + PR | `dotnet build` + `dotnet test` (7 project) |
+| **docker** | Push (không phải PR) | Build **7 image** song song (matrix) → push lên `ghcr.io` |
+| **deploy** | Push vào `main` **và** đã khai secret `VPS_HOST` | SSH vào VPS → `docker compose pull && up -d` |
+
+> **Chưa có VPS?** Không sao — job `deploy` **tự bỏ qua** (in notice), 2 job đầu vẫn chạy. Image vẫn được đẩy lên ghcr.io.
+
+### Image sinh ra
+```
+ghcr.io/benz2222/pizzaapp/gateway:latest   (+ tag theo commit SHA)
+ghcr.io/benz2222/pizzaapp/auth:latest
+ghcr.io/benz2222/pizzaapp/{category,product,cart,order,payment}:latest
+```
+
+### Muốn bật deploy VPS — khai secrets
+GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Ví dụ |
+|---|---|
+| `VPS_HOST` | `123.45.67.89` |
+| `VPS_USER` | `root` |
+| `VPS_SSH_KEY` | Nội dung private key (`cat ~/.ssh/id_rsa`) |
+| `JWT_SECRET_KEY` | chuỗi bí mật mới |
+| `PUBLIC_BASE_URL` | `http://123.45.67.89:8090` |
+| `PAYMENT_PROVIDER` | `PayOS` hoặc `Mock` |
+| `PAYOS_CLIENT_ID` / `PAYOS_API_KEY` / `PAYOS_CHECKSUM_KEY` | key PayOS |
+
+VPS chỉ cần cài sẵn **Docker**. Workflow tự copy `docker-compose.prod.yml`, tự tạo `.env`, tự pull image và chạy.
+
+> 💡 Có VPS IP public thì **không cần ngrok nữa** — webhook PayOS gọi thẳng vào VPS.
+
+### Chạy thủ công
+GitHub → tab **Actions** → **CI/CD Microservices** → **Run workflow**
 
 ---
 
