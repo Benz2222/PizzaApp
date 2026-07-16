@@ -42,7 +42,7 @@ public class AuthService : IAuthService
         return ToAuthResponse(user);
     }
 
-    public async Task<string> ForgotPasswordAsync(string email)
+    public async Task ForgotPasswordAsync(string email)
     {
         var user = await _users.Find(u => u.Email == email).FirstOrDefaultAsync();
         if (user is null)
@@ -53,7 +53,9 @@ public class AuthService : IAuthService
             .Set(u => u.ResetPasswordToken, resetToken)
             .Set(u => u.ResetPasswordTokenExpiry, DateTime.UtcNow.AddMinutes(15));
         await _users.UpdateOneAsync(u => u.Id == user.Id, update);
-        return resetToken;
+
+        // Mã chỉ ra log server, KHÔNG gửi về client. Triển khai thật: gửi qua email.
+        Console.WriteLine($"[Auth] Ma dat lai mat khau cho {email}: {resetToken} (het han sau 15 phut)");
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto)

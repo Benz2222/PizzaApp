@@ -54,8 +54,9 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var token = await _authService.ForgotPasswordAsync(dto.Email);
-            return Ok(new { message = "Token reset password đã được tạo.", token });
+            await _authService.ForgotPasswordAsync(dto.Email);
+            // Không trả mã về client: mã chỉ có trong log server (thật thì gửi qua email).
+            return Ok(new { message = "Mã đặt lại đã được tạo và gửi đi." });
         }
         catch (InvalidOperationException ex)
         {

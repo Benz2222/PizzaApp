@@ -70,22 +70,19 @@ class AuthService {
     }
   }
 
-  // Quên mật khẩu — trả token (dev BE trả token trong response) hoặc lỗi
-  static Future<({String? token, String? error})> forgotPassword(
-      String email) async {
+  // Quên mật khẩu — trả null nếu thành công, ngược lại trả chuỗi lỗi.
+  // Mã đặt lại KHÔNG về client (bảo mật) — nó nằm trong log server.
+  static Future<String?> forgotPassword(String email) async {
     try {
       final res = await http.post(
         Uri.parse('${AppConstants.baseUrl}/auth/forgot-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        return (token: data['token']?.toString(), error: null);
-      }
-      return (token: null, error: _parseError(res.body, 'Không gửi được yêu cầu'));
+      if (res.statusCode == 200) return null;
+      return _parseError(res.body, 'Không gửi được yêu cầu');
     } catch (_) {
-      return (token: null, error: 'Không kết nối được máy chủ');
+      return 'Không kết nối được máy chủ';
     }
   }
 

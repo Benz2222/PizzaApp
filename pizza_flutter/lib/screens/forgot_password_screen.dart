@@ -24,18 +24,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
     setState(() { _isLoading = true; _error = null; _info = null; });
-    final res = await AuthService.forgotPassword(_emailController.text.trim());
+    final error = await AuthService.forgotPassword(_emailController.text.trim());
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (res.error != null) {
-      setState(() => _error = res.error);
+    if (error != null) {
+      setState(() => _error = error);
       return;
     }
     setState(() {
       _step2 = true;
-      // BE bản dev trả token thẳng trong response -> tự điền sẵn cho tiện test
-      if (res.token != null) _tokenController.text = res.token!;
-      _info = 'Đã tạo mã đặt lại. Nhập mật khẩu mới để hoàn tất.';
+      _info = 'Đã gửi mã đặt lại. Nhập mã và mật khẩu mới để hoàn tất.';
     });
   }
 
