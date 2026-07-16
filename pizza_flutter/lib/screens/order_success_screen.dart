@@ -26,6 +26,9 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     with WidgetsBindingObserver {
   Timer? _timer;
   bool _paid = false;
+  // Trạng thái đơn lấy từ BE. Vòng đời:
+  // AwaitingPayment -> Paid -> Preparing -> Ready -> Delivering -> Done (hoặc Cancelled)
+  String _status = '';
 
   @override
   void initState() {
@@ -50,14 +53,19 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   }
 
   Future<void> _check() async {
-    if (_paid || !mounted) return;
+    if (!mounted) return;
     try {
       final orders = await OrderService.getMyOrders();
       final o = orders.where((e) => e.id == widget.orderId);
-      if (o.isNotEmpty && o.first.paymentStatus == 'Paid' && mounted) {
-        setState(() => _paid = true);
-        _timer?.cancel();
-      }
+      if (o.isEmpty || !mounted) return;
+      final order = o.first;
+      setState(() {
+        _paid = order.paymentStatus == 'Paid';
+        _status = order.status;
+      });
+      // Chỉ ngừng hỏi khi đơn đã kết thúc — trả tiền xong vẫn phải theo dõi
+      // tiếp để thấy admin/shipper đổi trạng thái.
+      if (_status == 'Done' || _status == 'Cancelled') _timer?.cancel();
     } catch (_) {
       // lỗi mạng tạm thời -> lần poll sau thử lại
     }
@@ -242,6 +250,14 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   }
 
   Widget _buildTracker() {
+    // Bánh coi như làm xong khi đơn đã qua khỏi bước Preparing.
+    final baking = _status == 'Preparing';
+    final baked = _status == 'Ready' ||
+        _status == 'Delivering' ||
+        _status == 'Done';
+    final delivering = _status == 'Delivering';
+    final delivered = _status == 'Done';
+
     final steps = [
       {'label': 'Đã đặt hàng', 'sub': 'Vừa xong', 'done': true},
       {
@@ -251,10 +267,29 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
       },
       {
         'label': 'Đang làm bánh',
-        'sub': _paid ? 'Sắp tới' : '—',
-        if (_paid) 'active': true else 'pending': true,
+        'sub': baked
+            ? 'Xong'
+            : baking
+                ? 'Đang làm'
+                : _paid
+                    ? 'Sắp tới'
+                    : '—',
+        if (baked) 'done': true else if (baking) 'active': true else 'pending': true,
       },
-      {'label': 'Đã giao', 'sub': '—', 'pending': true},
+      {
+        'label': 'Đã giao',
+        'sub': delivered
+            ? 'Xong'
+            : delivering
+                ? 'Đang giao'
+                : '—',
+        if (delivered)
+          'done': true
+        else if (delivering)
+          'active': true
+        else
+          'pending': true,
+      },
     ];
     return Container(
       width: double.infinity,
