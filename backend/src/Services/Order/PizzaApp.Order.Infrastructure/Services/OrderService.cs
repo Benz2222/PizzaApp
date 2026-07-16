@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using PizzaApp.Order.Core.DTOs;
 using PizzaApp.Order.Core.Interfaces;
@@ -164,6 +165,92 @@ public class OrderService : IOrderService
             o => o.Id == orderId && o.ShipperId == shipperId && o.Status == "Delivering",
             Builders<OrderEntity>.Update.Set(o => o.Status, status));
         return result.ModifiedCount > 0;
+    }
+
+    /// <summary>Danh sách trạng thái hợp lệ, theo đúng vòng đời đơn.</summary>
+    private static readonly string[] AllStatuses =
+        { "AwaitingPayment", "Paid", "Preparing", "Ready", "Delivering", "Done", "Cancelled" };
+
+    /// <summary>Điền đủ 7 trạng thái (thiếu = 0), bỏ trạng thái lạ.</summary>
+    public static Dictionary<string, int> NormalizeByStatus(Dictionary<string, int> raw)
+    {
+        var result = new Dictionary<string, int>();
+        foreach (var s in AllStatuses)
+            result[s] = raw.TryGetValue(s, out var n) ? n : 0;
+        return result;
+    }
+
+    public async Task<OrderStatsDto> GetStatsAsync()
+    {
+        var todayStart = DateTime.UtcNow.Date;
+
+        var b = Builders<OrderEntity>.Filter;
+        // Doanh thu: chỉ đơn đã trả tiền và không bị huỷ
+        var paidFilter = b.And(b.Eq(o => o.PaymentStatus, "Paid"), b.Ne(o => o.Status, "Cancelled"));
+        var paidTodayFilter = b.And(paidFilter, b.Gte(o => o.CreatedAt, todayStart));
+
+        var revenueTotal = await SumRevenueAsync(paidFilter);
+        var revenueToday = await SumRevenueAsync(paidTodayFilter);
+
+        // Số đơn: đếm MỌI đơn (kể cả chưa trả tiền / đã huỷ)
+        var ordersTotal = (int)await _orders.CountDocumentsAsync(b.Empty);
+        var ordersToday = (int)await _orders.CountDocumentsAsync(b.Gte(o => o.CreatedAt, todayStart));
+
+        // Đếm theo trạng thái
+        var statusGroups = await _orders.Aggregate()
+            .Group(o => o.Status, g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var rawByStatus = statusGroups.ToDictionary(x => x.Status ?? "", x => x.Count);
+
+        return new OrderStatsDto
+        {
+            RevenueTotal = revenueTotal,
+            RevenueToday = revenueToday,
+            OrdersTotal = ordersTotal,
+            OrdersToday = ordersToday,
+            ByStatus = NormalizeByStatus(rawByStatus),
+            TopProducts = await GetTopProductsAsync()
+        };
+    }
+
+    private async Task<decimal> SumRevenueAsync(FilterDefinition<OrderEntity> filter)
+    {
+        var result = await _orders.Aggregate().Match(filter)
+            .Group(o => 1, g => new { Total = g.Sum(o => o.TotalPrice) })
+            .FirstOrDefaultAsync();
+        return result?.Total ?? 0m;
+    }
+
+    /// <summary>Top 5 món bán chạy (theo số lượng), chỉ tính đơn đã thanh toán.</summary>
+    private async Task<List<TopProductDto>> GetTopProductsAsync()
+    {
+        var pipeline = new[]
+        {
+            new BsonDocument("$match", new BsonDocument
+            {
+                { "PaymentStatus", "Paid" },
+                { "Status", new BsonDocument("$ne", "Cancelled") }
+            }),
+            new BsonDocument("$unwind", "$OrderItems"),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", "$OrderItems.ProductName" },
+                { "quantity", new BsonDocument("$sum", "$OrderItems.Quantity") },
+                { "revenue", new BsonDocument("$sum",
+                    new BsonDocument("$multiply", new BsonArray
+                        { "$OrderItems.Quantity", "$OrderItems.UnitPrice" })) }
+            }),
+            new BsonDocument("$sort", new BsonDocument("quantity", -1)),
+            new BsonDocument("$limit", 5)
+        };
+
+        var docs = await _orders.Aggregate<BsonDocument>(pipeline).ToListAsync();
+        return docs.Select(d => new TopProductDto
+        {
+            ProductName = d["_id"].IsBsonNull ? "" : d["_id"].AsString,
+            Quantity = d["quantity"].ToInt32(),
+            Revenue = d["revenue"].ToDecimal()
+        }).ToList();
     }
 
     public static OrderResultDto MapToDto(OrderEntity o) => new()

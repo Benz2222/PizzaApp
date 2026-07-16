@@ -45,6 +45,10 @@ public class AuthController : ControllerBase
         return Ok(profile);
     }
 
+    [HttpGet("admin/stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Stats() => Ok(await _authService.GetStatsAsync());
+
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {

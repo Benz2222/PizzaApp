@@ -26,6 +26,11 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 50)
         => Ok(await _productService.GetAllAsync(search, categoryId, page, pageSize));
 
+    // Phải đặt TRƯỚC GetById("{id}") - nếu không route {id} sẽ nuốt mất "admin/stats"
+    [HttpGet("admin/stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Stats() => Ok(await _productService.GetStatsAsync());
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {

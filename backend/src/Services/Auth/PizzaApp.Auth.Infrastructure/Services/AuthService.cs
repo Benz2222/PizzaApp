@@ -89,6 +89,25 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<AuthStatsDto> GetStatsAsync()
+    {
+        var groups = await _users.Aggregate()
+            .Group(u => u.Role, g => new { Role = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        // Data cũ có user thiếu field Role (key = null) -> gộp vào "Customer".
+        // Phải GroupBy rồi Sum, không ToDictionary thẳng (null và "Customer" sẽ trùng khoá -> ném lỗi).
+        var byRole = groups
+            .GroupBy(x => string.IsNullOrEmpty(x.Role) ? "Customer" : x.Role)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
+
+        return new AuthStatsDto
+        {
+            TotalUsers = byRole.Values.Sum(),
+            ByRole = byRole
+        };
+    }
+
     /// <summary>Kiểm token reset. Trả null nếu hợp lệ, ngược lại trả message lỗi.</summary>
     public static string? ValidateResetToken(User user, string token)
     {

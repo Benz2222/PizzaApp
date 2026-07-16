@@ -11,6 +11,7 @@ public interface IOrderService
     Task<OrderResultDto?> GetOrderDetailAsync(string orderId, string userId);
     Task<bool> CancelOrderAsync(string orderId, string userId);
     Task<List<OrderResultDto>> GetAllOrdersAsync();
+    Task<OrderStatsDto> GetStatsAsync();
     Task<List<OrderResultDto>> GetOrdersByStatusAsync(string status);
     Task<bool> UpdateOrderStatusAsync(string orderId, string status);
     Task<bool> ClaimOrderAsync(string orderId, string shipperId);

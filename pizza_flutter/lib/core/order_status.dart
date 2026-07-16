@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/order.dart';
 
-String orderStatusLabel(OrderModel o) {
-  if (o.isUnpaid) return 'Chờ thanh toán';
-  switch (o.status) {
+const _unpaidColor = Color(0xFFBA7517);
+
+/// Nhãn theo TÊN trạng thái (dùng cho dashboard - nơi chỉ có chuỗi, không có OrderModel).
+String orderStatusLabelByName(String status) {
+  switch (status) {
+    case 'AwaitingPayment':
+      return 'Chờ thanh toán';
     case 'Paid':
       return 'Đã thanh toán';
     case 'Preparing':
@@ -17,13 +21,15 @@ String orderStatusLabel(OrderModel o) {
     case 'Cancelled':
       return 'Đã hủy';
     default:
-      return o.status;
+      return status;
   }
 }
 
-Color orderStatusColor(OrderModel o) {
-  if (o.isUnpaid) return const Color(0xFFBA7517);
-  switch (o.status) {
+/// Màu theo TÊN trạng thái (dùng cho dashboard).
+Color orderStatusColorByName(String status) {
+  switch (status) {
+    case 'AwaitingPayment':
+      return _unpaidColor;
     case 'Paid':
       return const Color(0xFF8E44AD);
     case 'Preparing':
@@ -40,6 +46,12 @@ Color orderStatusColor(OrderModel o) {
       return const Color(0xFF639922);
   }
 }
+
+String orderStatusLabel(OrderModel o) =>
+    o.isUnpaid ? 'Chờ thanh toán' : orderStatusLabelByName(o.status);
+
+Color orderStatusColor(OrderModel o) =>
+    o.isUnpaid ? _unpaidColor : orderStatusColorByName(o.status);
 
 Widget orderStatusBadge(OrderModel o) {
   final color = orderStatusColor(o);

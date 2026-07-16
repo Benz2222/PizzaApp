@@ -93,6 +93,18 @@ flutter run --no-enable-impeller
 
 Hoặc bấm **"Đăng ký ngay"** trong app để tạo tài khoản khách mới.
 
+## ✨ Tính năng chính
+
+**Khách hàng:** xem món theo danh mục · tìm kiếm · giỏ hàng · đặt hàng · **thanh toán QR (PayOS)** · theo dõi đơn
+
+**Admin** (menu trong tab *Tài khoản*):
+- **Bảng điều khiển** — doanh thu hôm nay/tổng, số đơn, đơn theo trạng thái, top món bán chạy, tổng quan hệ thống
+- Quản lý đơn hàng / sản phẩm / danh mục
+
+**Shipper:** nhận đơn · cập nhật trạng thái giao
+
+> 💡 **Dashboard là ví dụ rõ nhất về microservice**: nó gọi **song song 4 endpoint** (`orders`/`auth`/`products`/`category` `/admin/stats`) — mỗi service tự tính số liệu của mình. **Một service chết cũng không sập cả màn hình**: phần đó hiện `—`, phần còn lại vẫn chạy.
+
 ---
 
 ## 🏗️ Kiến trúc

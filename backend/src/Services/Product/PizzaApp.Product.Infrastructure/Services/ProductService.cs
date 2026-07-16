@@ -89,6 +89,19 @@ public class ProductService : IProductService
         return result.DeletedCount > 0;
     }
 
+    public async Task<ProductStatsDto> GetStatsAsync()
+    {
+        var total = (int)await _products.CountDocumentsAsync(Builders<ProductEntity>.Filter.Empty);
+        var available = (int)await _products.CountDocumentsAsync(
+            Builders<ProductEntity>.Filter.Eq(p => p.IsAvailable, true));
+        return new ProductStatsDto
+        {
+            TotalProducts = total,
+            Available = available,
+            Unavailable = total - available
+        };
+    }
+
     public static (int page, int pageSize) NormalizePaging(int page, int pageSize)
     {
         if (page < 1) page = 1;

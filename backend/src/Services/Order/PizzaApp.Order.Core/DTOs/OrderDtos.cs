@@ -36,3 +36,20 @@ public class OrderItemResultDto
     public decimal UnitPrice { get; set; }
     public string Size { get; set; } = "M";
 }
+
+public class TopProductDto
+{
+    public string ProductName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal Revenue { get; set; }
+}
+
+public class OrderStatsDto
+{
+    public decimal RevenueToday { get; set; }
+    public decimal RevenueTotal { get; set; }
+    public int OrdersToday { get; set; }
+    public int OrdersTotal { get; set; }
+    public Dictionary<string, int> ByStatus { get; set; } = new();
+    public List<TopProductDto> TopProducts { get; set; } = new();
+}

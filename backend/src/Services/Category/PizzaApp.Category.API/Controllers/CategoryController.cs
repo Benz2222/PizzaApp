@@ -16,6 +16,11 @@ public class CategoryController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll() => Ok(await _categoryService.GetAllAsync());
 
+    // Phải đặt TRƯỚC GetById("{id}") - nếu không route {id} sẽ nuốt mất "admin/stats"
+    [HttpGet("admin/stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Stats() => Ok(await _categoryService.GetStatsAsync());
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {

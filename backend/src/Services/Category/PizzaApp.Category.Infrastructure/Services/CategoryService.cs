@@ -44,5 +44,12 @@ public class CategoryService : ICategoryService
         return result.DeletedCount > 0;
     }
 
+    public async Task<CategoryStatsDto> GetStatsAsync()
+    {
+        var total = (int)await _categories.CountDocumentsAsync(
+            Builders<CategoryEntity>.Filter.Empty);
+        return new CategoryStatsDto { TotalCategories = total };
+    }
+
     public static CategoryDTO ToDto(CategoryEntity c) => new() { Id = c.Id, Name = c.Name };
 }

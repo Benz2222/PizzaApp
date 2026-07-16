@@ -9,4 +9,5 @@ public interface ICategoryService
     Task<CategoryDTO> CreateAsync(CreateCategoryDTO dto);
     Task<bool> UpdateAsync(string id, UpdateCategoryDTO dto);
     Task<bool> DeleteAsync(string id);
+    Task<CategoryStatsDto> GetStatsAsync();
 }

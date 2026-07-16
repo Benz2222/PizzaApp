@@ -48,6 +48,10 @@ public class OrdersController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> All() => Ok(await _orderService.GetAllOrdersAsync());
 
+    [HttpGet("admin/stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Stats() => Ok(await _orderService.GetStatsAsync());
+
     [HttpPost("{id}/confirm-payment")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ConfirmPayment(string id)

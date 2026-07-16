@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'admin_dashboard_screen.dart';
 import 'admin_products_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_orders_screen.dart';
@@ -99,6 +100,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
                     // Khu vực quản trị theo vai trò
                     if (role == 'Admin') ...[
+                      _menuTile(Icons.dashboard_outlined, 'Bảng điều khiển',
+                          () => Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => const AdminDashboardScreen()))),
                       _menuTile(Icons.receipt_long_outlined, 'Quản lý đơn hàng',
                           () => Navigator.push(context, MaterialPageRoute(
                               builder: (_) => const AdminOrdersScreen()))),

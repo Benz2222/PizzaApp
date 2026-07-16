@@ -9,4 +9,5 @@ public interface IProductService
     Task<ProductDto> CreateAsync(CreateProductDTO dto);
     Task<bool> UpdateAsync(string id, UpdateProductDTO dto);
     Task<bool> DeleteAsync(string id);
+    Task<ProductStatsDto> GetStatsAsync();
 }

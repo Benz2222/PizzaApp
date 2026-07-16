@@ -11,3 +11,10 @@ public class ProductDto
     public string CategoryName { get; set; } = string.Empty;
     public bool IsAvailable { get; set; }
 }
+
+public class ProductStatsDto
+{
+    public int TotalProducts { get; set; }
+    public int Available { get; set; }
+    public int Unavailable { get; set; }
+}

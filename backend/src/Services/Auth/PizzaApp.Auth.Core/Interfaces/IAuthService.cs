@@ -9,4 +9,5 @@ public interface IAuthService
     Task<string> ForgotPasswordAsync(string email);
     Task ResetPasswordAsync(ResetPasswordDto dto);
     Task<UserProfileDto?> GetProfileAsync(string userId);
+    Task<AuthStatsDto> GetStatsAsync();
 }

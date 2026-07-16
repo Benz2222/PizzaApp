@@ -9,3 +9,9 @@ public class UserProfileDto
     public string Address { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 }
+
+public class AuthStatsDto
+{
+    public int TotalUsers { get; set; }
+    public Dictionary<string, int> ByRole { get; set; } = new();
+}
