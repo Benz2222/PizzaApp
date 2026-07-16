@@ -37,7 +37,8 @@ public class PayOSPaymentGateway : IPaymentGateway
 
         CreatePaymentResult result = await _payOS.createPaymentLink(data);
 
-        // result.qrCode là chuỗi VietQR -> render thành ảnh PNG để app hiển thị, quét được bằng app ngân hàng
+        // result.qrCode là chuỗi VietQR (chuẩn EMVCo, Napas247) -> render thành ảnh PNG
+        // để app hiển thị. Quét bằng app NGÂN HÀNG (không dùng ví như MoMo - không hỗ trợ QRIBFTTA).
         var qrDataUri = RenderQr(result.qrCode);
 
         return new PaymentCreation(result.checkoutUrl, qrDataUri, orderCode);
