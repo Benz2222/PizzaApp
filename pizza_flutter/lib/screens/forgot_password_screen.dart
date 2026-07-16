@@ -76,7 +76,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
+          child: Center(child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
@@ -155,7 +155,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ],
             ),
-          ),
+          )),
         ),
       ),
     );

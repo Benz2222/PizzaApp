@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
+          child: Center(child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
@@ -119,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ],
             ),
-          ),
+          )),
         ),
       ),
     );
