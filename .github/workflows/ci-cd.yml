@@ -142,6 +142,7 @@ jobs:
             cat > .env <<EOF
             IMAGE_PREFIX=${{ env.REGISTRY }}/${{ steps.repo.outputs.lower }}
             TAG=${{ github.sha }}
+            MONGO_CONNECTION=${{ secrets.MONGO_CONNECTION }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
             PAYMENT_PROVIDER=${{ secrets.PAYMENT_PROVIDER }}
