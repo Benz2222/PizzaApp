@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bat buoc cho ban RELEASE: goi API qua mang. Ban debug Flutter tu them, release thi khong. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="pizza_app_flutter"
         android:name="${applicationName}"
