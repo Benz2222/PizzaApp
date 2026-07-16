@@ -15,8 +15,13 @@ public interface IOrderService
     Task<List<OrderResultDto>> GetMyOrdersAsync(string userId);
     Task<OrderResultDto?> GetOrderDetailAsync(string orderId, string userId);
     Task<bool> CancelOrderAsync(string orderId, string userId);
-    // Admin & Shipper methods
+    // Admin methods
     Task<List<OrderResultDto>> GetAllOrdersAsync();
     Task<List<OrderResultDto>> GetOrdersByStatusAsync(string status);
     Task<bool> UpdateOrderStatusAsync(string orderId, string status);
+
+    // Shipper methods
+    Task<bool> ClaimOrderAsync(string orderId, string shipperId);          // Ready -> Delivering, gán shipper
+    Task<List<OrderResultDto>> GetShipperOrdersAsync(string shipperId);    // đơn của shipper này
+    Task<bool> UpdateDeliveryStatusAsync(string orderId, string shipperId, string status); // Delivering -> Done/Cancelled
 }

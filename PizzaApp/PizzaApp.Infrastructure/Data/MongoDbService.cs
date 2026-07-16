@@ -55,11 +55,21 @@ public class MongoDbService
             });
         }
 
+        if (!BsonClassMap.IsClassMapRegistered(typeof(OrderItem)))
+        {
+            BsonClassMap.RegisterClassMap<OrderItem>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetIgnoreExtraElements(true); // bỏ qua field cũ còn sót trong đơn hàng
+            });
+        }
+
         if (!BsonClassMap.IsClassMapRegistered(typeof(Order)))
         {
             BsonClassMap.RegisterClassMap<Order>(cm =>
             {
                 cm.AutoMap();
+                cm.SetIgnoreExtraElements(true);
                 cm.MapIdProperty(o => o.Id)
                   .SetIdGenerator(StringObjectIdGenerator.Instance) // Tự sinh ID cho đơn hàng mới
                   .SetSerializer(new StringSerializer(BsonType.String));

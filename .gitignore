@@ -39,3 +39,7 @@ coverage/
 *.iml
 *.ipr
 *.iws
+# Anh do nguoi dung upload - khong commit vao source (giu thu muc bang .gitkeep)
+PizzaApp/PizzaApp.API/wwwroot/uploads/*
+!PizzaApp/PizzaApp.API/wwwroot/uploads/.gitkeep
+backend/.env

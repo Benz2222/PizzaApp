@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using PizzaApp.Core.DTOs.Category;
 using PizzaApp.Core.Interfaces;
 
@@ -34,6 +35,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(CreateCategoryDTO dto)
         {
             var category = await _categoryService.CreateAsync(dto);
@@ -42,6 +44,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(string id, UpdateCategoryDTO dto)
         {
             var result = await _categoryService.UpdateAsync(id, dto);
@@ -53,6 +56,7 @@ namespace PizzaApp.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             var result = await _categoryService.DeleteAsync(id);

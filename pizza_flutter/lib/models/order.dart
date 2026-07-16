@@ -29,6 +29,7 @@ class OrderModel {
   final String paymentStatus;
   final String paymentUrl;
   final String deliveryAddress;
+  final String shipperId;
   final DateTime? createdAt;
   final List<OrderItemModel> items;
 
@@ -39,6 +40,7 @@ class OrderModel {
     required this.paymentStatus,
     required this.paymentUrl,
     required this.deliveryAddress,
+    required this.shipperId,
     required this.createdAt,
     required this.items,
   });
@@ -52,6 +54,7 @@ class OrderModel {
     paymentStatus: json['paymentStatus'] ?? '',
     paymentUrl: json['paymentUrl'] ?? '',
     deliveryAddress: json['deliveryAddress'] ?? '',
+    shipperId: json['shipperId']?.toString() ?? '',
     createdAt: DateTime.tryParse(json['createdAt'] ?? ''),
     items: (json['items'] as List? ?? [])
         .map((e) => OrderItemModel.fromJson(e))

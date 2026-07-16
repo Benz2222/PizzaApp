@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
-import '../services/auth_service.dart';
+import '../services/category_service.dart';
+import '../core/text_utils.dart';
 import '../providers/cart_provider.dart';
+import '../widgets/product_image.dart';
 import 'detail_screen.dart';
 import 'cart_screen.dart';
 import 'orders_screen.dart';
-import 'login_screen.dart';
+import 'account_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,9 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'Tất cả';
   bool _isLoading = true;
 
-  final List<String> _categories = [
-    'Tất cả', 'Truyền thống', 'Hải sản', 'Chay', 'Đặc biệt'
-  ];
+  // Danh mục tải động từ BE (luôn có 'Tất cả' đứng đầu)
+  List<String> _categories = ['Tất cả'];
 
   final Map<String, String> _categoryEmoji = {
     'Truyền thống': '🍕',
@@ -37,24 +38,46 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+    _loadCategories();
   }
 
   Future<void> _loadProducts() async {
     final products = await ProductService.getAll();
+    if (!mounted) return;
     setState(() {
       _products = products;
-      _filtered = products;
+      _filtered = _selectedCategory == 'Tất cả'
+          ? products
+          : products.where((p) => p.category == _selectedCategory).toList();
       _isLoading = false;
     });
   }
 
+  Future<void> _loadCategories() async {
+    final names = await CategoryService.getNames();
+    if (!mounted || names.isEmpty) return;
+    setState(() => _categories = ['Tất cả', ...names]);
+  }
+
+  String _searchQuery = '';
+
   void _filterCategory(String cat) {
-    setState(() {
-      _selectedCategory = cat;
-      _filtered = cat == 'Tất cả'
-          ? _products
-          : _products.where((p) => p.category == cat).toList();
-    });
+    _selectedCategory = cat;
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    var list = _products;
+    if (_selectedCategory != 'Tất cả') {
+      list = list.where((p) => p.category == _selectedCategory).toList();
+    }
+    final q = removeDiacritics(_searchQuery.trim());
+    if (q.isNotEmpty) {
+      list = list.where((p) =>
+          removeDiacritics(p.name).contains(q) ||
+          removeDiacritics(p.description).contains(q)).toList();
+    }
+    setState(() => _filtered = list);
   }
 
   @override
@@ -78,6 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildSearchBar(),
+                    const SizedBox(height: 16),
                     _buildPromoBanner(),
                     const SizedBox(height: 16),
                     _buildCategories(),
@@ -119,19 +144,39 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () async {
-              await AuthService.logout();
-              if (mounted) {
-                Navigator.pushAndRemoveUntil(context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false);
-              }
-            },
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AccountScreen())),
             child: const CircleAvatar(
                 backgroundColor: Colors.white24,
                 child: Icon(Icons.person, color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return TextField(
+      onChanged: (v) {
+        _searchQuery = v;
+        _applyFilters();
+      },
+      decoration: InputDecoration(
+        hintText: 'Tìm pizza theo tên...',
+        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        prefixIcon: const Icon(Icons.search, color: Color(0xFFD85A30)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD3D1C7))),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD3D1C7))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD85A30))),
       ),
     );
   }
@@ -235,14 +280,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 100,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFAECE7),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              child: Container(
+                height: 100,
+                color: const Color(0xFFFAECE7),
+                child: ProductImage(
+                    imageUrl: product.imageUrl, emoji: emoji, emojiSize: 48),
               ),
-              alignment: Alignment.center,
-              child: Text(emoji, style: const TextStyle(fontSize: 48)),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
@@ -316,14 +361,9 @@ class _HomeScreenState extends State<HomeScreen> {
               _navItem(Icons.receipt_long_outlined, 'Đơn hàng', false,
                       () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const OrdersScreen()))),
-              _navItem(Icons.person_outline, 'Tài khoản', false, () async {
-                await AuthService.logout();
-                if (mounted) {
-                  Navigator.pushAndRemoveUntil(context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          (route) => false);
-                }
-              }),
+              _navItem(Icons.person_outline, 'Tài khoản', false,
+                      () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const AccountScreen()))),
             ],
           ),
         ),

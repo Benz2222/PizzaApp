@@ -1,0 +1,159 @@
+name: CI/CD Microservices
+
+on:
+  push:
+    branches: [main, tam-mircoservice]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  REGISTRY: ghcr.io
+
+jobs:
+  # ---------- 1. Build + test toàn solution ----------
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore backend/PizzaApp.Microservices.sln
+
+      - name: Build
+        run: dotnet build backend/PizzaApp.Microservices.sln -c Release --no-restore
+
+      - name: Test (7 project)
+        run: dotnet test backend/PizzaApp.Microservices.sln -c Release --no-build --verbosity normal
+
+  # ---------- 2. Build & push 7 Docker image lên ghcr.io ----------
+  docker:
+    name: Docker (${{ matrix.name }})
+    needs: build-test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gateway
+            dockerfile: src/ApiGateway/Dockerfile
+          - name: auth
+            dockerfile: src/Services/Auth/PizzaApp.Auth.API/Dockerfile
+          - name: category
+            dockerfile: src/Services/Category/PizzaApp.Category.API/Dockerfile
+          - name: product
+            dockerfile: src/Services/Product/PizzaApp.Product.API/Dockerfile
+          - name: cart
+            dockerfile: src/Services/Cart/PizzaApp.Cart.API/Dockerfile
+          - name: order
+            dockerfile: src/Services/Order/PizzaApp.Order.API/Dockerfile
+          - name: payment
+            dockerfile: src/Services/Payment/PizzaApp.Payment.API/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repo name viet thuong (ghcr yeu cau lowercase)
+        id: repo
+        run: echo "lower=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: backend                        # Dockerfile COPY theo goc backend/
+          file: backend/${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.lower }}/${{ matrix.name }}:latest
+            ${{ env.REGISTRY }}/${{ steps.repo.outputs.lower }}/${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # ---------- 3. Deploy VPS (tu bo qua neu chua khai secrets) ----------
+  deploy:
+    name: Deploy to VPS
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kiem tra da khai secrets VPS chua
+        id: check
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "ready=false" >> $GITHUB_OUTPUT
+            echo "::notice::Chua khai secrets VPS_HOST -> bo qua deploy. Image van da day len ghcr.io."
+          else
+            echo "ready=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Repo name viet thuong
+        if: steps.check.outputs.ready == 'true'
+        id: repo
+        run: echo "lower=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Copy compose file len VPS
+        if: steps.check.outputs.ready == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: backend/docker-compose.prod.yml
+          target: ~/pizzaapp
+          strip_components: 1
+
+      - name: Deploy (pull & up)
+        if: steps.check.outputs.ready == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/pizzaapp
+            cat > .env <<EOF
+            IMAGE_PREFIX=${{ env.REGISTRY }}/${{ steps.repo.outputs.lower }}
+            TAG=${{ github.sha }}
+            MONGO_CONNECTION=${{ secrets.MONGO_CONNECTION }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
+            PAYMENT_PROVIDER=${{ secrets.PAYMENT_PROVIDER }}
+            PAYOS_CLIENT_ID=${{ secrets.PAYOS_CLIENT_ID }}
+            PAYOS_API_KEY=${{ secrets.PAYOS_API_KEY }}
+            PAYOS_CHECKSUM_KEY=${{ secrets.PAYOS_CHECKSUM_KEY }}
+            PAYOS_RETURN_URL=${{ secrets.PUBLIC_BASE_URL }}/api/payment/return
+            PAYOS_CANCEL_URL=${{ secrets.PUBLIC_BASE_URL }}/api/payment/return
+            EOF
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml ps

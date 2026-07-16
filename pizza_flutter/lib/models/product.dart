@@ -6,6 +6,7 @@ class Product {
   final String imageUrl;
   final String categoryId;
   final String category; // = categoryName từ BE (giữ tên "category" cho các màn hình cũ)
+  final bool isAvailable;
 
   Product({
     required this.id,
@@ -15,6 +16,7 @@ class Product {
     required this.imageUrl,
     required this.categoryId,
     required this.category,
+    this.isAvailable = true,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -25,5 +27,6 @@ class Product {
     imageUrl: json['imageUrl'] ?? '',
     categoryId: json['categoryId']?.toString() ?? '',
     category: json['categoryName'] ?? '',
+    isAvailable: json['isAvailable'] ?? true,
   );
 }

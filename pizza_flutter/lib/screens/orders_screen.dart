@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/order.dart';
+import '../core/order_status.dart';
 import '../services/order_service.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -13,11 +15,21 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   List<OrderModel> _orders = [];
   bool _isLoading = true;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // Tự động kiểm tra trạng thái đơn mỗi 8 giây
+    _timer = Timer.periodic(
+        const Duration(seconds: 8), (_) => _refreshSilently());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -28,6 +40,62 @@ class _OrdersScreenState extends State<OrdersScreen> {
         _orders = orders;
         _isLoading = false;
       });
+    }
+  }
+
+  // Làm mới ngầm: phát hiện đơn đổi trạng thái -> báo cho khách
+  Future<void> _refreshSilently() async {
+    final fresh = await OrderService.getMyOrders();
+    if (!mounted) return;
+
+    final oldLabels = {for (final o in _orders) o.id: orderStatusLabel(o)};
+    for (final o in fresh) {
+      final before = oldLabels[o.id];
+      final now = orderStatusLabel(o);
+      if (before != null && before != now) {
+        final shortId = o.id.length <= 6
+            ? o.id.toUpperCase()
+            : o.id.substring(o.id.length - 6).toUpperCase();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Đơn #PZL-$shortId: $now'),
+          backgroundColor: orderStatusColor(o),
+          duration: const Duration(seconds: 3),
+        ));
+      }
+    }
+    setState(() => _orders = fresh);
+  }
+
+  Future<void> _confirmCancel(OrderModel order) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Hủy đơn hàng?'),
+        content: const Text('Bạn có chắc muốn hủy đơn hàng này?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Không')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Hủy đơn',
+                  style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final error = await OrderService.cancelOrder(order.id);
+    if (!mounted) return;
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã hủy đơn hàng'),
+        backgroundColor: Color(0xFFD85A30),
+      ));
+      _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red));
     }
   }
 
@@ -98,7 +166,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               Text('#PZL-$shortId',
                   style: const TextStyle(
                       fontWeight: FontWeight.w800, fontSize: 14)),
-              _statusBadge(order),
+              orderStatusBadge(order),
             ],
           ),
           if (order.createdAt != null) ...[
@@ -169,50 +237,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
             ),
           ],
+          if (order.status == 'AwaitingPayment') ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton(
+                onPressed: () => _confirmCancel(order),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('HỦY ĐƠN',
+                    style: TextStyle(color: Colors.red,
+                        fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+              ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-
-  Widget _statusBadge(OrderModel order) {
-    // Ưu tiên hiển thị trạng thái thanh toán khi chưa trả tiền
-    late String label;
-    late Color color;
-    if (order.isUnpaid) {
-      label = 'Chờ thanh toán';
-      color = const Color(0xFFBA7517);
-    } else {
-      switch (order.status) {
-        case 'Preparing':
-          label = 'Đang chuẩn bị';
-          color = const Color(0xFFD85A30);
-          break;
-        case 'Delivering':
-          label = 'Đang giao';
-          color = const Color(0xFF2D7DD2);
-          break;
-        case 'Done':
-          label = 'Hoàn tất';
-          color = const Color(0xFF639922);
-          break;
-        case 'Cancelled':
-          label = 'Đã hủy';
-          color = Colors.grey;
-          break;
-        default:
-          label = order.status;
-          color = const Color(0xFF639922);
-      }
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w700, color: color)),
     );
   }
 

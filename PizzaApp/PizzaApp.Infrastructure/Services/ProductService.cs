@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using PizzaApp.Core.DTOs.Product;
 using PizzaApp.Core.Entities;
@@ -17,9 +18,31 @@ public class ProductService : IProductService
         _categories = mongoDb.GetCollection<Category>("Categories");
     }
 
-    public async Task<List<ProductDto>> GetAllAsync()
+    public async Task<List<ProductDto>> GetAllAsync(
+        string? search, string? categoryId, int page, int pageSize)
     {
-        var products = await _products.Find(p => p.IsAvailable).ToListAsync();
+        var b = Builders<Product>.Filter;
+        var filter = b.Eq(p => p.IsAvailable, true);
+
+        // Lọc theo danh mục
+        if (!string.IsNullOrWhiteSpace(categoryId))
+            filter &= b.Eq(p => p.CategoryId, categoryId);
+
+        // Tìm kiếm theo tên hoặc mô tả (không phân biệt hoa thường)
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var regex = new BsonRegularExpression(search, "i");
+            filter &= b.Or(b.Regex(p => p.Name, regex), b.Regex(p => p.Description, regex));
+        }
+
+        // Phân trang
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var products = await _products.Find(filter)
+            .Skip((page - 1) * pageSize)
+            .Limit(pageSize)
+            .ToListAsync();
 
         // Lấy tên category một lần để tránh query lặp (N+1)
         var categories = await _categories.Find(_ => true).ToListAsync();

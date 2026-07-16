@@ -1,0 +1,128 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  auth:
+    build:
+      context: .
+      dockerfile: src/Services/Auth/PizzaApp.Auth.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Auth
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on:
+      - mongo
+
+  category:
+    build:
+      context: .
+      dockerfile: src/Services/Category/PizzaApp.Category.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Category
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+    depends_on:
+      - mongo
+
+  product:
+    build:
+      context: .
+      dockerfile: src/Services/Product/PizzaApp.Product.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Product
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__CategoryUrl=http://category:8080/
+    depends_on:
+      - mongo
+      - category
+
+  cart:
+    build:
+      context: .
+      dockerfile: src/Services/Cart/PizzaApp.Cart.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Cart
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__ProductUrl=http://product:8080/
+      - EventBus__HostName=rabbitmq
+    depends_on:
+      - mongo
+      - product
+      - rabbitmq
+
+  payment:
+    build:
+      context: .
+      dockerfile: src/Services/Payment/PizzaApp.Payment.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Payment
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - EventBus__HostName=rabbitmq
+      - Payment__PublicBaseUrl=${PUBLIC_BASE_URL}
+      - Payment__Provider=${PAYMENT_PROVIDER:-PayOS}
+      - PayOS__ClientId=${PAYOS_CLIENT_ID:-}
+      - PayOS__ApiKey=${PAYOS_API_KEY:-}
+      - PayOS__ChecksumKey=${PAYOS_CHECKSUM_KEY:-}
+      - PayOS__ReturnUrl=${PAYOS_RETURN_URL:-https://example.com/success}
+      - PayOS__CancelUrl=${PAYOS_CANCEL_URL:-https://example.com/cancel}
+    depends_on:
+      - mongo
+      - rabbitmq
+
+  order:
+    build:
+      context: .
+      dockerfile: src/Services/Order/PizzaApp.Order.API/Dockerfile
+    environment:
+      - MongoDB__ConnectionString=${MONGO_CONNECTION:-mongodb://mongo:27017}
+      - MongoDB__DatabaseName=PizzaApp_Order
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - Services__ProductUrl=http://product:8080/
+      - Services__PaymentUrl=http://payment:8080/
+      - Services__CartUrl=http://cart:8080/
+      - EventBus__HostName=rabbitmq
+    depends_on:
+      - mongo
+      - product
+      - payment
+      - cart
+      - rabbitmq
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/ApiGateway/Dockerfile
+    ports:
+      # 8090 tren may (8080 hay bi Apache/PEM, XAMPP... gianh) -> 8080 trong container
+      - "8090:8080"
+    environment:
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
+      - ReverseProxy__Clusters__category-cluster__Destinations__category-1__Address=http://category:8080/
+      - ReverseProxy__Clusters__product-cluster__Destinations__product-1__Address=http://product:8080/
+      - ReverseProxy__Clusters__cart-cluster__Destinations__cart-1__Address=http://cart:8080/
+      - ReverseProxy__Clusters__order-cluster__Destinations__order-1__Address=http://order:8080/
+      - ReverseProxy__Clusters__payment-cluster__Destinations__payment-1__Address=http://payment:8080/
+    depends_on:
+      - auth
+      - category
+      - product
+      - cart
+      - order
+      - payment
+
+volumes:
+  mongo-data:

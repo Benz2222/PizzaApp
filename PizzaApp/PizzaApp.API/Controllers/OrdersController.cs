@@ -86,26 +86,85 @@ public class OrdersController : ControllerBase
         return Ok(orders);
     }
 
-    [HttpPost("{id}/confirm-payment")]
-    public async Task<IActionResult> ConfirmPayment(string id)
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> CancelOrder(string id)
     {
-        var success = await _orderService.ConfirmPaymentAsync(id);
-        if (!success) return BadRequest(new { message = "Xác nhận thất bại." });
-        return Ok(new { message = "Thanh toán thành công (Demo)!" });
+        var success = await _orderService.CancelOrderAsync(id, GetUserId());
+        if (!success)
+            return BadRequest(new { message = "Không thể hủy đơn (không tồn tại hoặc đã qua bước thanh toán)." });
+        return Ok(new { message = "Đã hủy đơn hàng." });
     }
 
-    [HttpGet("shipper/available")]
-    public async Task<IActionResult> GetOrdersForShipper()
+    // --- ADMIN: quản lý tất cả đơn ---
+
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllOrders()
     {
-        var orders = await _orderService.GetOrdersByStatusAsync("Preparing");
+        var orders = await _orderService.GetAllOrdersAsync();
         return Ok(orders);
     }
 
+    // Admin xác nhận đã thanh toán -> đơn chuyển sang "Paid"
+    [HttpPost("{id}/confirm-payment")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ConfirmPayment(string id)
+    {
+        var success = await _orderService.ConfirmPaymentAsync(id);
+        if (!success)
+            return BadRequest(new { message = "Không xác nhận được (đơn không tồn tại hoặc đã thanh toán)." });
+        return Ok(new { message = "Đã xác nhận thanh toán." });
+    }
+
+    // Admin đổi trạng thái: Paid -> Preparing -> Ready
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateStatus(string id, [FromBody] string status)
     {
         var success = await _orderService.UpdateOrderStatusAsync(id, status);
         if (!success) return NotFound();
+        return Ok(new { message = $"Đã cập nhật: {status}" });
+    }
+
+    // --- SHIPPER ---
+
+    // Đơn đang chờ giao (Ready, chưa ai nhận)
+    [HttpGet("shipper/available")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> GetOrdersForShipper()
+    {
+        var orders = await _orderService.GetOrdersByStatusAsync("Ready");
+        return Ok(orders);
+    }
+
+    // Đơn shipper này đã nhận
+    [HttpGet("shipper/mine")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> GetMyDeliveries()
+    {
+        var orders = await _orderService.GetShipperOrdersAsync(GetUserId());
+        return Ok(orders);
+    }
+
+    // Shipper nhận đơn (Ready -> Delivering, gán cho shipper này)
+    [HttpPost("{id}/claim")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> ClaimOrder(string id)
+    {
+        var success = await _orderService.ClaimOrderAsync(id, GetUserId());
+        if (!success)
+            return BadRequest(new { message = "Không nhận được đơn (đã có shipper khác nhận)." });
+        return Ok(new { message = "Đã nhận đơn." });
+    }
+
+    // Shipper cập nhật đơn của mình: Delivering -> Done / Cancelled
+    [HttpPost("{id}/delivery-status")]
+    [Authorize(Roles = "Shipper,Admin")]
+    public async Task<IActionResult> UpdateDeliveryStatus(string id, [FromBody] string status)
+    {
+        var success = await _orderService.UpdateDeliveryStatusAsync(id, GetUserId(), status);
+        if (!success)
+            return BadRequest(new { message = "Không cập nhật được (đơn không phải của bạn hoặc trạng thái không hợp lệ)." });
         return Ok(new { message = $"Đã cập nhật: {status}" });
     }
 }
