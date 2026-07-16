@@ -103,8 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildSearchBar(),
                     const SizedBox(height: 16),
-                    _buildPromoBanner(),
-                    const SizedBox(height: 16),
                     _buildCategories(),
                     const SizedBox(height: 16),
                     const Text('Phổ biến nhất',
@@ -177,33 +175,6 @@ class _HomeScreenState extends State<HomeScreen> {
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFFD85A30))),
-      ),
-    );
-  }
-
-  Widget _buildPromoBanner() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-            colors: [Color(0xFFD85A30), Color(0xFF993C1D)]),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: const Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Giảm 30%', style: TextStyle(fontSize: 22,
-                    fontWeight: FontWeight.w900, color: Colors.white)),
-                Text('Đơn đầu tiên của bạn!',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
-              ],
-            ),
-          ),
-          Text('🍕', style: TextStyle(fontSize: 48)),
-        ],
       ),
     );
   }

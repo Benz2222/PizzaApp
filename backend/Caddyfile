@@ -1,0 +1,7 @@
+# Caddy tu dong xin + gia han chung chi Let's Encrypt cho ten mien duoi day,
+# roi chuyen tiep vao API Gateway (YARP) trong mang Docker.
+# Nho vay toan bo he thong chay HTTPS ma khong phai sua code service nao.
+
+pizzaapp-tam.eastasia.cloudapp.azure.com {
+	reverse_proxy gateway:8080
+}
