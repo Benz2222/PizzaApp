@@ -1,4 +1,5 @@
 using PizzaApp.Payment.Core;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Payment.Core.Interfaces;
 using PizzaApp.Payment.Infrastructure;
 using PizzaApp.Payment.Infrastructure.Gateways;
@@ -48,7 +49,7 @@ builder.Services.AddRabbitMqEventBus(busSettings);
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Payment", "Tao giao dich + QR (PayOS hoac Mock), nhan webhook, ban event PaymentSucceeded.");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();

@@ -1,4 +1,5 @@
 using PizzaApp.Order.Core.Interfaces;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Order.Infrastructure;
 using PizzaApp.Order.Infrastructure.Clients;
 using PizzaApp.Order.Infrastructure.Services;
@@ -40,7 +41,7 @@ builder.Services.AddRabbitMqConsumer<PaymentSucceededEvent>("order.payment-succe
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Order", "Dat hang, vong doi don, thong ke. Goi REST sang Product/Payment/Cart; nghe event PaymentSucceeded.");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();

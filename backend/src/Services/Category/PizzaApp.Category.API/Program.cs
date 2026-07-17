@@ -1,4 +1,5 @@
 using PizzaApp.Category.Core.Interfaces;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Category.Infrastructure;
 using PizzaApp.Category.Infrastructure.Services;
 using PizzaApp.BuildingBlocks.Auth;
@@ -20,7 +21,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Category", "Quan ly danh muc pizza (CRUD).");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();

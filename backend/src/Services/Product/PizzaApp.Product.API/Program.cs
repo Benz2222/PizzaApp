@@ -1,4 +1,5 @@
 using PizzaApp.Product.Core.Interfaces;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Product.Infrastructure;
 using PizzaApp.Product.Infrastructure.Clients;
 using PizzaApp.Product.Infrastructure.Services;
@@ -29,7 +30,7 @@ builder.Services.AddHttpClient<ICategoryClient, CategoryHttpClient>(c =>
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Product", "Quan ly san pham, upload anh. Goi REST sang Category de lay ten danh muc.");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 // Phải tạo wwwroot/uploads TRƯỚC khi Build(): nếu thư mục chưa tồn tại thì
