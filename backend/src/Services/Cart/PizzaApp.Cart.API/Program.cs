@@ -1,4 +1,5 @@
 using PizzaApp.Cart.Core.Interfaces;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Cart.Infrastructure;
 using PizzaApp.Cart.Infrastructure.Clients;
 using PizzaApp.Cart.Infrastructure.Services;
@@ -39,7 +40,7 @@ builder.Services.AddHttpClient<IProductClient, ProductHttpClient>(c =>
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Cart", "Gio hang theo tung user. Nghe event OrderCreated de tu xoa gio.");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();

@@ -1,4 +1,5 @@
 using PizzaApp.Auth.Core.Interfaces;
+using PizzaApp.BuildingBlocks.Swagger;
 using PizzaApp.Auth.Infrastructure;
 using PizzaApp.Auth.Infrastructure.Services;
 using PizzaApp.BuildingBlocks.Auth;
@@ -22,7 +23,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddPizzaJwtAuthentication(jwtSettings);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddPizzaSwagger("Auth", "Dang ky, dang nhap, JWT, phan quyen 3 role: Customer / Admin / Shipper.");
 builder.Services.AddCors(o => o.AddPolicy("AllowAll",
     p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 

@@ -18,8 +18,20 @@ public class PaymentController : ControllerBase
         _payOS = payOS;
     }
 
-    /// <summary>PayOS gọi vào đây khi khách chuyển khoản thành công (cần URL public: ngrok/VPS).</summary>
+    /// <summary>PayOS gọi vào đây khi khách chuyển khoản thành công. Không gọi bằng tay.</summary>
+    /// <remarks>
+    /// Đây là **webhook** — PayOS chủ động gọi vào server, không phải app gọi. Vì vậy server
+    /// bắt buộc phải có địa chỉ công khai và **HTTPS** (dự án dùng Caddy + Let's Encrypt).
+    /// URL này được service tự đăng ký với PayOS lúc khởi động.
+    ///
+    /// Luồng: xác thực chữ ký → nếu hợp lệ thì đánh dấu payment là PAID
+    /// → bắn event `PaymentSucceeded` qua RabbitMQ → Order service nghe và đổi đơn sang Paid.
+    ///
+    /// Luôn trả 200 kể cả khi lỗi, để PayOS không gửi lại liên tục.
+    /// </remarks>
+    /// <response code="200">Đã nhận (kể cả khi chữ ký sai — lỗi chỉ ghi ra log).</response>
     [HttpPost("webhook")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Webhook([FromBody] WebhookType body)
     {
         try
@@ -38,16 +50,47 @@ public class PaymentController : ControllerBase
         return Ok(new { message = "received" });
     }
 
-    // Gọi nội bộ bởi Order service (REST).
+    /// <summary>Tạo giao dịch thanh toán, trả về link + ảnh QR. Do Order service gọi nội bộ.</summary>
+    /// <remarks>
+    /// Tuỳ biến môi trường `PAYMENT_PROVIDER` mà chạy một trong hai cổng, **không cần sửa code**:
+    ///
+    /// - `PayOS` — tiền thật, trả về link pay.payos.vn kèm QR ngân hàng quét được
+    /// - `Mock` — giả lập, QR chứa link tới trang xác nhận nội bộ, không mất tiền
+    ///
+    /// Ví dụ request:
+    ///
+    ///     POST /api/payment/create
+    ///     {
+    ///       "orderId": "6a59475f2b5f9d568f33f511",
+    ///       "amount": 10000,
+    ///       "items": [ { "name": "Margherita", "quantity": 1, "price": 10000 } ]
+    ///     }
+    ///
+    /// Ví dụ response:
+    ///
+    ///     {
+    ///       "checkoutUrl": "https://pay.payos.vn/web/28a052e343324b4c...",
+    ///       "qrCode": "data:image/png;base64,iVBORw0KG..."
+    ///     }
+    /// </remarks>
+    /// <response code="200">Đã tạo giao dịch.</response>
     [HttpPost("create")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Create([FromBody] CreatePaymentDto dto)
     {
         var creation = await _paymentService.CreatePaymentAsync(dto);
         return Ok(new { checkoutUrl = creation.CheckoutUrl, qrCode = creation.QrCodeDataUri });
     }
 
-    // Quét QR mở URL này (GET) -> trang "cổng thanh toán" đẹp, chưa trừ tiền.
+    /// <summary>Trang cổng thanh toán giả lập (chế độ Mock). Trả về HTML, không phải JSON.</summary>
+    /// <param name="code">Mã giao dịch nằm trong QR.</param>
+    /// <remarks>
+    /// Chỉ dùng ở chế độ `Mock`. Quét QR bằng camera thường sẽ mở trang này — hiện số tiền
+    /// và nút "Xác nhận thanh toán". Chưa trừ tiền ở bước này.
+    /// </remarks>
+    /// <response code="200">Trang HTML cổng thanh toán (hoặc trang báo đã thanh toán / không tìm thấy).</response>
     [HttpGet("confirm/{code}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Confirm(string code)
     {
         var info = await _paymentService.GetCheckoutAsync(code);
@@ -56,19 +99,40 @@ public class PaymentController : ControllerBase
         return Content(CheckoutPage(code, info.Amount, info.OrderId), "text/html; charset=utf-8");
     }
 
-    // Bấm "Xác nhận thanh toán" trên trang cổng -> hoàn tất (mark PAID + publish event).
+    /// <summary>Hoàn tất thanh toán giả lập (chế độ Mock) — tương đương khách đã trả tiền.</summary>
+    /// <param name="code">Mã giao dịch.</param>
+    /// <remarks>
+    /// Được gọi khi bấm nút "Xác nhận thanh toán" trên trang cổng giả lập.
+    /// Đánh dấu PAID và bắn event `PaymentSucceeded` — giống hệt việc webhook PayOS thật gọi vào.
+    /// </remarks>
+    /// <response code="200">Đã thanh toán.</response>
+    /// <response code="404">Không tìm thấy giao dịch với mã này.</response>
     [HttpPost("confirm/{code}/complete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Complete(string code)
     {
         var ok = await _paymentService.ConfirmAsync(code);
         return ok ? Ok(new { status = "PAID" }) : NotFound(new { status = "NOT_FOUND" });
     }
 
-    /// <summary>PayOS redirect về đây sau khi trả tiền -> tự nhảy deep link mở lại app.</summary>
+    /// <summary>PayOS chuyển hướng về đây sau khi khách trả tiền xong. Trả HTML mở lại app.</summary>
+    /// <remarks>
+    /// Trang này chỉ chứa đoạn script tự gọi deep link `pizzaapp://` để mở lại app trên điện thoại.
+    /// Nó **không** phải là nơi xác nhận thanh toán — việc đó do webhook làm.
+    /// </remarks>
+    /// <response code="200">Trang HTML tự mở lại app.</response>
     [HttpGet("return")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Return() => Content(ReturnTemplate, "text/html; charset=utf-8");
 
+    /// <summary>Tra cứu giao dịch theo Id đơn hàng.</summary>
+    /// <param name="orderId">Id đơn hàng.</param>
+    /// <response code="200">Thông tin giao dịch: link, QR, trạng thái.</response>
+    /// <response code="404">Đơn này chưa có giao dịch nào.</response>
     [HttpGet("order/{orderId}")]
+    [ProducesResponseType(typeof(PaymentView), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByOrder(string orderId)
     {
         var view = await _paymentService.GetByOrderAsync(orderId);
